@@ -278,16 +278,20 @@ a { color: var(--green-dark); }
 }
 .form-bg-scrim {
   position: fixed; inset: 0; z-index: 0;
-  background: linear-gradient(180deg, rgba(6, 30, 16, 0.32) 0%, rgba(6, 30, 16, 0.50) 100%);
+  /* Lighter scrim so the logo animation stays visible through the glass card. */
+  background: linear-gradient(180deg, rgba(6, 30, 16, 0.14) 0%, rgba(6, 30, 16, 0.30) 100%);
 }
 /* Solid ground behind the video so nothing flashes white on load. */
 body.has-form-bg { background: var(--green-darker); }
 
 .form-wrap { position: relative; z-index: 1; padding: 18px 0 44px; }
-/* The form + confirmation sit on an opaque card — legible and fast to fill,
-   regardless of the animation behind. */
+/* The form + confirmation sit on a FROSTED-GLASS card: translucent so the logo
+   animation shows through, blurred so the fields stay legible. */
 #formView, #confirmView {
-  background: var(--bg);
+  background: rgba(255, 255, 255, 0.62);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  backdrop-filter: blur(14px) saturate(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 22px 18px 28px;
