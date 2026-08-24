@@ -1,0 +1,16 @@
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Node (not used — no build step — but safe to ignore)
+node_modules/
+
+# Local scratch
+*.log

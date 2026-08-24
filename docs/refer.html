@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#1B7A43">
+  <title>Rujuk Kes — T.O.P. Touch</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="has-form-bg">
+  <!-- Logo A animation as form background -->
+  <video class="form-bg" poster="img/logo.png" preload="metadata"
+         playsinline muted loop autoplay aria-hidden="true">
+    <source src="video/logo-a.mp4" type="video/mp4">
+  </video>
+  <div class="form-bg-scrim"></div>
+
+  <header class="masthead">
+    <div class="container">
+      <img class="brand-mark" src="img/logo.png" alt="Logo T.O.P. Touch" width="36" height="36">
+      <span class="brand">T.O.P. Touch</span>
+      <span class="tagline">Sentuhan Keikhlasan</span>
+    </div>
+  </header>
+
+  <main class="container form-wrap">
+    <!-- FORM VIEW -->
+    <section id="formView">
+      <h1>Rujuk Kes Penderma</h1>
+      <p class="form-intro">
+        Isi maklumat asas. Rujukan akan dihantar terus kepada TOP Team.
+        <strong>Rujukan tidak akan ditolak secara automatik</strong> — kelayakan akhir
+        ditentukan oleh TOP Team.
+      </p>
+
+      <div id="errorBanner" class="error-banner" role="alert" hidden></div>
+
+      <form id="referForm" novalidate>
+
+        <!-- Ward / location -->
+        <div class="field">
+          <label class="field-label" for="ward">Wad / Lokasi <span class="req">*</span></label>
+          <select id="ward" name="ward" required>
+            <option value="" disabled selected>— Pilih wad / lokasi —</option>
+          </select>
+        </div>
+        <div class="field" id="lainlainWrap" hidden>
+          <label class="field-label" for="wardOther">Nyatakan lokasi <span class="req">*</span></label>
+          <input type="text" id="wardOther" name="wardOther" autocomplete="off"
+                 placeholder="cth: Wad Transit, Dewan Bedah 3">
+        </div>
+
+        <!-- Bed -->
+        <div class="field">
+          <label class="field-label" for="bed">No. Katil <span class="req">*</span></label>
+          <input type="text" id="bed" name="bed" inputmode="text" autocomplete="off" required>
+        </div>
+
+        <!-- Patient name -->
+        <div class="field">
+          <label class="field-label" for="patientName">Nama Pesakit <span class="req">*</span>
+            <span class="hint">Disimpan sulit dalam sistem. Tidak dihantar dalam sebarang alert.</span>
+          </label>
+          <input type="text" id="patientName" name="patientName" autocomplete="off" required>
+        </div>
+
+        <!-- IC -->
+        <div class="field">
+          <label class="field-label" for="icNo">No. Kad Pengenalan (IC) <span class="req">*</span>
+            <span class="hint">MyKad 12 digit / format lama / pasport diterima.</span>
+          </label>
+          <input type="text" id="icNo" name="icNo" inputmode="text" autocomplete="off" required>
+        </div>
+
+        <!-- RN -->
+        <div class="field">
+          <label class="field-label" for="rn">No. Pendaftaran (RN) <span class="req">*</span></label>
+          <input type="text" id="rn" name="rn" inputmode="text" autocomplete="off" required>
+        </div>
+
+        <!-- Time of death -->
+        <div class="field">
+          <label class="field-label" for="timeOfDeath">Tarikh &amp; Masa Kematian <span class="req">*</span></label>
+          <input type="datetime-local" id="timeOfDeath" name="timeOfDeath" required>
+        </div>
+
+        <!-- Serology ring (the one required motion) -->
+        <div class="serology" id="serology" data-state="ok" aria-live="polite">
+          <div class="ring">
+            <svg viewBox="0 0 84 84" aria-hidden="true">
+              <circle class="track" cx="42" cy="42" r="37"></circle>
+              <circle class="prog"  cx="42" cy="42" r="37"></circle>
+            </svg>
+            <div class="ring-pct" id="ringPct">4:00</div>
+          </div>
+          <div class="sero-text">
+            <div class="sero-title">Tempoh emas serologi (4 jam)</div>
+            <div class="sero-elapsed" id="seroElapsed">— sejak kematian</div>
+            <div class="sero-remain" id="seroRemain">Baki: —</div>
+          </div>
+        </div>
+
+        <!-- Exclusion screen -->
+        <fieldset class="field" style="border:0; padding:0; margin:0;">
+          <legend class="fieldset-legend">Skrin Eksklusi <span class="req">*</span></legend>
+          <p class="exclusion-note">
+            Jawab semua. Jawapan <strong>“Ya”</strong> tidak menolak rujukan — ia hanya
+            ditandakan kepada TOP Team untuk penilaian klinikal.
+          </p>
+
+          <div class="field">
+            <label class="field-label">Penyakit boleh dijangkiti secara virus / tingkah laku berisiko tinggi</label>
+            <div class="segmented is-exclusion" data-name="exclTransmissible"></div>
+          </div>
+          <div class="field">
+            <label class="field-label">Malignansi (barah)</label>
+            <div class="segmented is-exclusion" data-name="exclMalignancy"></div>
+          </div>
+          <div class="field">
+            <label class="field-label">Sepsis</label>
+            <div class="segmented is-exclusion" data-name="exclSepsis"></div>
+          </div>
+          <div class="field">
+            <label class="field-label">Penyakit sistemik tidak terkawal</label>
+            <div class="segmented is-exclusion" data-name="exclSystemic"></div>
+          </div>
+        </fieldset>
+
+        <!-- Pledger card -->
+        <div class="field">
+          <label class="field-label">Kad Pledger? <span class="req">*</span></label>
+          <div class="segmented" data-name="pledgerCard" data-options="Ya,Tidak,Tidak pasti"></div>
+        </div>
+
+        <!-- Family approached -->
+        <div class="field">
+          <label class="field-label">Keluarga sedar / didekati? <span class="req">*</span></label>
+          <div class="segmented" data-name="familyApproached" data-options="Ya,Tidak,Belum"></div>
+        </div>
+
+        <!-- Referring staff -->
+        <div class="field">
+          <label class="field-label" for="staffName">Nama Kakitangan Merujuk <span class="req">*</span></label>
+          <input type="text" id="staffName" name="staffName" autocomplete="off" required>
+        </div>
+        <div class="field">
+          <label class="field-label" for="contactExt">Hubungan (ext / telefon) <span class="req">*</span></label>
+          <input type="text" id="contactExt" name="contactExt" inputmode="tel" autocomplete="off" required>
+        </div>
+
+        <!-- Notes -->
+        <div class="field">
+          <label class="field-label" for="notes">Nota <span class="hint" style="display:inline;">(pilihan)</span></label>
+          <textarea id="notes" name="notes"></textarea>
+        </div>
+
+        <div class="submit-bar">
+          <button type="submit" id="submitBtn" class="btn btn-primary btn-block btn-lg">
+            Hantar Rujukan
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- CONFIRMATION VIEW -->
+    <section id="confirmView" class="confirm" hidden>
+      <div class="check">
+        <svg viewBox="0 0 52 52" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 27 l8 8 l16 -18"></path>
+        </svg>
+      </div>
+      <h1>Rujukan Diterima</h1>
+      <div class="ref-id" id="confirmRefId">REF-…</div>
+      <p class="thanks">TOP Team telah dimaklumkan.<br>Terima kasih atas sentuhan keikhlasan anda. 🤍</p>
+      <p style="color:var(--muted); font-size:.9rem;">
+        Simpan ID rujukan di atas untuk rujukan susulan.
+      </p>
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px;">
+        <a href="index.html" class="btn btn-ghost">Kembali ke Laman Utama</a>
+        <button type="button" id="anotherBtn" class="btn btn-primary">Rujuk Kes Lain</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/refer.js"></script>
+</body>
+</html>

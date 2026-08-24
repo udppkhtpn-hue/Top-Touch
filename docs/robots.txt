@@ -1,0 +1,4 @@
+# WiraTisu is an internal hospital staff tool reached by direct link / QR.
+# Keep the whole site out of search indexes (SPEC.md §6.4).
+User-agent: *
+Disallow: /
