@@ -278,24 +278,31 @@ a { color: var(--green-dark); }
 }
 .form-bg-scrim {
   position: fixed; inset: 0; z-index: 0;
-  /* Lighter scrim so the logo animation stays visible through the glass card. */
-  background: linear-gradient(180deg, rgba(6, 30, 16, 0.14) 0%, rgba(6, 30, 16, 0.30) 100%);
+  /* Very light scrim — the animation is pale, so keep it near clear. */
+  background: linear-gradient(180deg, rgba(6, 30, 16, 0.04) 0%, rgba(6, 30, 16, 0.12) 100%);
 }
 /* Solid ground behind the video so nothing flashes white on load. */
 body.has-form-bg { background: var(--green-darker); }
 
 .form-wrap { position: relative; z-index: 1; padding: 18px 0 44px; }
-/* The form + confirmation sit on a FROSTED-GLASS card: translucent so the logo
-   animation shows through, blurred so the fields stay legible. */
+/* The form + confirmation sit on a light glass card: transparent enough that the
+   logo animation reads through it, with only a whisper of blur. Legibility is
+   protected by keeping the actual inputs/labels opaque (see below).           */
 #formView, #confirmView {
-  background: rgba(255, 255, 255, 0.62);
-  -webkit-backdrop-filter: blur(14px) saturate(1.1);
-  backdrop-filter: blur(14px) saturate(1.1);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.40);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 22px 18px 28px;
   margin-top: 10px;
+}
+/* Give text blocks a subtle opaque backing so they stay readable over the
+   animation, while the card gaps let the animation show. */
+#formView h1, .form-intro,
+.field > label.field-label, .fieldset-legend {
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
 }
 
 .form-intro { color: var(--muted); font-size: .95rem; margin-bottom: 14px; }
