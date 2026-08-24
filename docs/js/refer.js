@@ -6,8 +6,8 @@
 (function () {
   'use strict';
 
-  // ---- Form background video (Logo A) — respect reduced motion ----------
-  var bgVid = document.querySelector('.form-bg');
+  // ---- Logo A animation band — respect reduced motion -------------------
+  var bgVid = document.querySelector('.form-anim-video');
   if (bgVid) {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       bgVid.removeAttribute('autoplay');

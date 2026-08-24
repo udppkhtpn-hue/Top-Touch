@@ -271,38 +271,20 @@ a { color: var(--green-dark); }
 /* ==========================================================================
    REFERRAL FORM  (minimal motion by design)
    ========================================================================== */
-/* Form background: Logo A animation, fixed behind a solid form card. */
-.form-bg {
-  position: fixed; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; z-index: 0;
-}
-.form-bg-scrim {
-  position: fixed; inset: 0; z-index: 0;
-  /* Very light scrim — the animation is pale, so keep it near clear. */
-  background: linear-gradient(180deg, rgba(6, 30, 16, 0.04) 0%, rgba(6, 30, 16, 0.12) 100%);
-}
-/* Solid ground behind the video so nothing flashes white on load. */
-body.has-form-bg { background: var(--green-darker); }
+.form-wrap { padding: 14px 0 44px; }
 
-.form-wrap { position: relative; z-index: 1; padding: 18px 0 44px; }
-/* The form + confirmation sit on a light glass card: transparent enough that the
-   logo animation reads through it, with only a whisper of blur. Legibility is
-   protected by keeping the actual inputs/labels opaque (see below).           */
-#formView, #confirmView {
-  background: rgba(255, 255, 255, 0.40);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+/* Logo A animation band, above the form (not a background). */
+.form-anim {
+  margin: 6px 0 16px;
+  height: clamp(200px, 32vh, 300px);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 22px 18px 28px;
-  margin-top: 10px;
+  overflow: hidden;
+  background: var(--green);
+  box-shadow: var(--shadow-sm);
 }
-/* Give text blocks a subtle opaque backing so they stay readable over the
-   animation, while the card gaps let the animation show. */
-#formView h1, .form-intro,
-.field > label.field-label, .fieldset-legend {
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
+.form-anim-video {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
 }
 
 .form-intro { color: var(--muted); font-size: .95rem; margin-bottom: 14px; }
