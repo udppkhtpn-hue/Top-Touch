@@ -14,3 +14,7 @@ node_modules/
 
 # Local scratch
 *.log
+
+# clasp (Apps Script CLI) — local link to the script project; do not publish
+.clasp.json
+.clasprc.json
