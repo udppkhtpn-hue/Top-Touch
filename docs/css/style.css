@@ -146,6 +146,79 @@ a { color: var(--green-dark); }
 .masthead .brand { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; letter-spacing: -.01em; }
 .masthead .tagline { font-size: .82rem; opacity: .9; margin-left: auto; }
 
+/* ---- Top-ribbon navigation -------------------------------------------- */
+.nav-toggle {
+  display: none;                 /* shown on phones only (see media query) */
+  margin-left: auto;
+  width: 44px; height: 44px;
+  align-items: center; justify-content: center;
+  background: transparent; border: 0; border-radius: 10px;
+  color: #fff; cursor: pointer;
+}
+.nav-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.nav-toggle-bars, .nav-toggle-bars::before, .nav-toggle-bars::after {
+  content: ""; display: block;
+  width: 22px; height: 2px; background: #fff; border-radius: 2px;
+  transition: transform .2s ease, background-color .2s ease;
+}
+.nav-toggle-bars { position: relative; }
+.nav-toggle-bars::before { position: absolute; top: -7px; left: 0; }
+.nav-toggle-bars::after  { position: absolute; top:  7px; left: 0; }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars { background: transparent; }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars::before { transform: translateY(7px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars::after  { transform: translateY(-7px) rotate(-45deg); }
+
+.site-nav { margin-left: auto; }
+.site-nav ul {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; align-items: center; gap: 4px;
+}
+.nav-link, .nav-soon {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px; border-radius: 999px;
+  font-weight: 600; font-size: .95rem; line-height: 1;
+  color: #fff; text-decoration: none; white-space: nowrap;
+}
+.nav-link { opacity: .82; transition: background-color .15s ease, opacity .15s ease; }
+.nav-link:hover { opacity: 1; background: rgba(255,255,255,.14); }
+.nav-link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; opacity: 1; }
+.nav-link[aria-current="page"] { opacity: 1; background: rgba(255,255,255,.20); }
+.nav-soon { opacity: .55; cursor: default; }
+.nav-soon-tag { display: none; }   /* desktop: keep the ribbon uncluttered */
+
+@media (max-width: 639.98px) {
+  .masthead .container { flex-wrap: wrap; }
+  /* Stacked list layout (also the no-JS fallback). */
+  .site-nav { flex-basis: 100%; }
+  .site-nav ul {
+    flex-direction: column; align-items: stretch; gap: 2px;
+    padding: 8px 18px calc(12px + env(safe-area-inset-bottom));
+  }
+  .nav-link, .nav-soon {
+    justify-content: space-between;
+    min-height: var(--tap); padding: 12px 14px; border-radius: 10px;
+    font-size: 1rem; opacity: 1;
+  }
+  .nav-link:hover, .nav-link[aria-current="page"] { background: rgba(255,255,255,.12); }
+  .nav-soon { opacity: .6; }
+  .nav-soon-tag {
+    display: inline-block; font-size: .7rem; font-weight: 700;
+    padding: 3px 8px; border-radius: 999px;
+    background: rgba(255,255,255,.16); color: #fff;
+  }
+  /* Enhanced: collapse behind the hamburger. */
+  .masthead.nav-ready .nav-toggle { display: inline-flex; }
+  .masthead.nav-ready .site-nav {
+    position: absolute; left: 0; right: 0; top: 100%;
+    margin: 0; background: var(--green-dark);
+    border-top: 1px solid rgba(255,255,255,.12);
+    box-shadow: var(--shadow);
+    max-height: 0; overflow: hidden;
+    transition: max-height .28s ease;
+  }
+  .masthead.nav-ready .site-nav.open { max-height: 80vh; }
+}
+
 /* Logo mark — white chip so the green logo reads on green/red surfaces */
 .brand-mark {
   width: 36px; height: 36px; flex: 0 0 auto;
@@ -251,8 +324,8 @@ a { color: var(--green-dark); }
   background: var(--white); border: 1px solid var(--line);
   border-radius: var(--radius-sm); padding: 14px 16px;
 }
-.window-card .hrs { font-weight: 800; color: var(--green-dark); font-size: 1.5rem; min-width: 3.2ch; text-align: center; white-space: nowrap; }
-.window-card .lbl { color: var(--muted); font-size: .95rem; }
+.window-card .hrs { flex: 0 0 auto; font-weight: 800; color: var(--green-dark); font-size: 1.5rem; text-align: center; white-space: nowrap; }
+.window-card .lbl { flex: 1 1 auto; min-width: 0; color: var(--muted); font-size: .95rem; }
 
 /* Nav cards */
 .nav-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

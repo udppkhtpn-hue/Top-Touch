@@ -15,7 +15,20 @@
         <img class="brand-mark" src="img/logo.png" alt="Logo T.O.P. Touch" width="36" height="36">
         <span class="brand">T.O.P. Touch</span>
       </a>
-      <span class="tagline">Sentuhan Keikhlasan</span>
+
+      <button class="nav-toggle" type="button" aria-label="Buka menu" aria-controls="siteNav" aria-expanded="false">
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+
+      <nav class="site-nav" id="siteNav" aria-label="Navigasi utama">
+        <ul>
+          <li><a class="nav-link" href="index.html">Utama</a></li>
+          <li><a class="nav-link" href="refer.html" aria-current="page">Rujuk Kes</a></li>
+          <li><span class="nav-soon" aria-disabled="true" title="Akan datang">Pendidikan<span class="nav-soon-tag">Akan datang</span></span></li>
+          <li><span class="nav-soon" aria-disabled="true" title="Akan datang">Papan Data<span class="nav-soon-tag">Akan datang</span></span></li>
+          <li><span class="nav-soon" aria-disabled="true" title="Akan datang">Admin<span class="nav-soon-tag">Akan datang</span></span></li>
+        </ul>
+      </nav>
     </div>
   </header>
 
@@ -189,5 +202,6 @@
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/refer.js"></script>
+  <script src="js/nav.js"></script>
 </body>
 </html>
