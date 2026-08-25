@@ -75,7 +75,8 @@ var DEFAULT_CONFIG = [
   ['dashboardCode',     'TOPDASH'],               // change before dashboard go-live (Phase 4)
   ['wardCode',          ''],                       // set a code only if wardCodeEnabled = true
   ['wardCodeEnabled',   'false'],                  // off by default
-  ['chatWebhookUrl',    ''],                        // Phase 1b
+  ['chatWebhookUrl',    ''],                        // Phase 1b: Google Chat space incoming-webhook URL
+  ['whatsappEnabled',   'false'],                   // Phase 1b: explicit opt-in for the CallMeBot channel
   ['alertEmails',       ''],                          // set this in the Config sheet (kept out of the public repo)
   ['alertProvider',     'email']                    // Phase 1a baseline channel
 ];

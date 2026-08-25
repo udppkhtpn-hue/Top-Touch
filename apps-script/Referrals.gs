@@ -8,8 +8,11 @@
  *   - The app NEVER auto-rejects. An exclusion = Yes still submits; the flag is
  *     surfaced in the alert, not used to block (§6.1).
  *   - The response carries ONLY the referral ID — no patient data (§4, §12).
- *   - patientName / icNo are stored in the sheet but are deliberately NOT passed
- *     to the alert layer, so they cannot leak into a message (§3).
+ *   - Alerts DO carry full referral detail incl. patientName / icNo. Deliberate
+ *     owner decision: this is an internal, staff-only tool, so the TOP team wants
+ *     the complete form in the alert. (Amends the identifier-light alert rule in
+ *     SPEC §6.2.) Identifiers are still kept out of URLs, query strings and the
+ *     confirmation screen.
  */
 
 // Fields the server requires before it will write a row. IC format is validated
@@ -100,6 +103,8 @@ function submitReferral(payload, code) {
       id: referralId,
       ward: payload.ward,
       bed: payload.bed,
+      patientName: payload.patientName, // included in alerts by owner decision —
+      icNo: payload.icNo,               // internal staff-only tool (see note below)
       rn: payload.rn,
       timeOfDeath: tod,
       exclTransmissible: payload.exclTransmissible,
@@ -109,8 +114,8 @@ function submitReferral(payload, code) {
       pledgerCard: payload.pledgerCard,
       familyApproached: payload.familyApproached,
       staffName: payload.staffName,
-      contactExt: payload.contactExt
-      // NOTE: patientName and icNo intentionally omitted from the alert payload.
+      contactExt: payload.contactExt,
+      notes: payload.notes || ''
     };
     sendAlert(referral);
   } catch (alertErr) {
@@ -184,5 +189,5 @@ function testSubmitReferral() {
   };
   var res = submitReferral(fake, '');
   Logger.log('testSubmitReferral result: ' + JSON.stringify(res));
-  Logger.log('Check: (1) a NEW row in Referrals, (2) an email at ferwahn@moh.gov.my with the malignancy flag shown and NO name/IC.');
+  Logger.log('Check: (1) a NEW row in Referrals, (2) an alert email with the malignancy flag shown AND the patient name/IC included.');
 }
