@@ -8,11 +8,10 @@
  *   - The app NEVER auto-rejects. An exclusion = Yes still submits; the flag is
  *     surfaced in the alert, not used to block (§6.1).
  *   - The response carries ONLY the referral ID — no patient data (§4, §12).
- *   - Alerts DO carry full referral detail incl. patientName / icNo. Deliberate
- *     owner decision: this is an internal, staff-only tool, so the TOP team wants
- *     the complete form in the alert. (Amends the identifier-light alert rule in
- *     SPEC §6.2.) Identifiers are still kept out of URLs, query strings and the
- *     confirmation screen.
+ *   - Email + Chat alerts carry full referral detail incl. patientName / icNo
+ *     (owner decision — internal staff-only tool; amends SPEC §6.2). Both channels
+ *     stay inside MOH Workspace. Identifiers are still kept out of URLs, query
+ *     strings and the confirmation screen.
  */
 
 // Fields the server requires before it will write a row. IC format is validated
@@ -103,8 +102,8 @@ function submitReferral(payload, code) {
       id: referralId,
       ward: payload.ward,
       bed: payload.bed,
-      patientName: payload.patientName, // included in alerts by owner decision —
-      icNo: payload.icNo,               // internal staff-only tool (see note below)
+      patientName: payload.patientName, // email + Chat alerts include these
+      icNo: payload.icNo,               // (owner decision; internal staff-only tool)
       rn: payload.rn,
       timeOfDeath: tod,
       exclTransmissible: payload.exclTransmissible,

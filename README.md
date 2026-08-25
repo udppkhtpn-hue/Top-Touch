@@ -10,11 +10,12 @@ phone in under 60 seconds; the team gets an instant, **identifier-light** alert.
 - **Frontend:** static HTML/CSS/vanilla JS on GitHub Pages (no build step).
 - **Backend:** one Google Apps Script web app (`action` router).
 - **Database:** Google Sheets.
-- **Alerts:** Gmail baseline + Google Chat push + WhatsApp (CallMeBot). All three
-  live behind one `sendAlert()` fan-out; each stays off until configured.
+- **Alerts:** Gmail baseline + Google Chat push, behind one `sendAlert()` fan-out;
+  each stays off until configured. Both stay inside MOH Workspace. (WhatsApp was
+  evaluated and dropped — every route runs through a non-MOH third party.)
 
 > **Phase 1a + 1b** (this build): referral form → Sheet row → alert fan-out
-> (email always, Chat and WhatsApp when configured).
+> (email always, Chat when configured).
 > Not yet built: admin panel, auth, dashboard, education hub, escalation trigger.
 > Their router cases exist but return `not_implemented`.
 
@@ -36,7 +37,7 @@ apps-script/              ← paste these into the Apps Script project
   Setup.gs                initializeDatabase()
   Code.gs                 doPost/doGet router + shared helpers
   Referrals.gs            submitReferral + sequential ID + lock
-  Alerts.gs               sendAlert() fan-out (email live; chat/whatsapp stubs)
+  Alerts.gs               sendAlert() fan-out (email + Google Chat)
   appsscript.json         timezone + scopes + web app config
 SPEC.md
 ```
@@ -66,21 +67,18 @@ SPEC.md
    Optional editor test: run **`testSubmitReferral`** — it writes a fake row and
    sends a test email. Check the Referrals sheet and the inbox.
 
-#### Phase 1b push channels (optional, config-only — no redeploy)
+#### Phase 1b — Google Chat push (optional, config-only — no redeploy)
 
-Both are off until you fill in the Config sheet. Nothing here is a code change.
+Off until you fill in the Config sheet. Not a code change.
 
-- **Google Chat (primary push).** In the target Chat space → **Apps & integrations
-  → Webhooks → Add** → copy the URL into Config `chatWebhookUrl`. Verify with the
-  editor helper **`testSendChat`** — a test card should land in the space.
-- **WhatsApp (optional pilot, via CallMeBot).** Each on-call person follows the
-  free CallMeBot activation once, then in the **Users** sheet set their
-  `whatsappNumber` (with country code) and `callmebotKey`, and `oncall = Y`. Flip
-  Config `whatsappEnabled` to `true`. Verify with **`testSendWhatsApp`**.
-  > NOTE: WhatsApp carries the same full detail as the other channels, incl.
-  > name/IC. CallMeBot is a **third-party relay**, so enabling this sends those
-  > identifiers through an outside service — keep it off (the default) unless that
-  > transit is acceptable to you.
+- In the target Chat space → **Apps & integrations → Webhooks → Add** → copy the
+  URL into Config `chatWebhookUrl`. Verify with the editor helper **`testSendChat`**
+  — a test message should land in the space. Blank URL = channel off.
+
+> WhatsApp was evaluated as a push channel and dropped: every route (CallMeBot or
+> Meta's WhatsApp Cloud API, direct or via a BSP) runs through a non-MOH third
+> party, a data-governance concern for patient detail. Email + Chat both stay
+> inside MOH Workspace.
 
 ### 2. Deploy the web app
 
@@ -107,12 +105,12 @@ Both are off until you fill in the Config sheet. Nothing here is a code change.
 
 ## Key behaviours & safeguards (Phase 1a)
 
-- **Full referral detail in alerts** (owner decision — internal, staff-only tool).
-  The Gmail/Chat alert carries the same fields as the form: patient name, IC, ward,
-  bed, RN, time of death, exclusion flags, notes, and staff contact. Patient
-  identifiers are still kept **out of** URLs, query strings, and the confirmation
-  screen (which shows the referral ID only). *Amends the identifier-light alert
-  rule in SPEC §6.2.*
+- **Full detail in the internal alerts** (owner decision — staff-only tool). The
+  Gmail/Chat alert carries the same fields as the form: patient name, IC, ward, bed,
+  RN, time of death, exclusion flags, notes, and staff contact. Both channels stay
+  inside MOH Workspace. Patient identifiers are still kept **out of** URLs, query
+  strings, and the confirmation screen (which shows the referral ID only).
+  *Amends the identifier-light alert rule in SPEC §6.2.*
 - **Never auto-rejects.** An exclusion answered “Ya” still submits; the flag is
   surfaced in the alert. Final eligibility is always the TOP Team’s clinical decision.
 - **Concurrent-safe IDs.** ID generation + row append run inside `LockService`, so two
@@ -146,7 +144,6 @@ fetch at deploy time. If missing, the CSS falls back to a grotesque system stack
 | `dashboardCode` | Phase 4 coded-dashboard gate |
 | `wardCode` / `wardCodeEnabled` | optional anti-spam code on the form (off by default) |
 | `chatWebhookUrl` | Google Chat space incoming-webhook URL (blank = channel off) |
-| `whatsappEnabled` | `true` to enable the CallMeBot WhatsApp channel (default `false`) |
 | `alertEmails` | Gmail alert recipients (comma-separated) |
 | `alertProvider` | active baseline channel (`email`) |
 

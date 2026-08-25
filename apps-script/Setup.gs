@@ -64,7 +64,7 @@ var DEFAULT_ADMIN = {
 //   - wardList     : REPLACE with the real ward list before go-live.
 //   - alertEmails  : who receives the Gmail baseline alert (comma-separated).
 //   - wardCodeEnabled : 'false' = no code required on the form (recommended).
-//   - chatWebhookUrl / whatsapp : Phase 1b, left blank on purpose.
+//   - chatWebhookUrl : Google Chat space webhook; left blank = Chat channel off.
 // ---------------------------------------------------------------------------
 var DEFAULT_CONFIG = [
   // key                value
@@ -75,8 +75,7 @@ var DEFAULT_CONFIG = [
   ['dashboardCode',     'TOPDASH'],               // change before dashboard go-live (Phase 4)
   ['wardCode',          ''],                       // set a code only if wardCodeEnabled = true
   ['wardCodeEnabled',   'false'],                  // off by default
-  ['chatWebhookUrl',    ''],                        // Phase 1b: Google Chat space incoming-webhook URL
-  ['whatsappEnabled',   'false'],                   // Phase 1b: explicit opt-in for the CallMeBot channel
+  ['chatWebhookUrl',    ''],                        // Google Chat space incoming-webhook URL (blank = channel off)
   ['alertEmails',       ''],                          // set this in the Config sheet (kept out of the public repo)
   ['alertProvider',     'email']                    // Phase 1a baseline channel
 ];
