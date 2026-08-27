@@ -27,7 +27,27 @@ var SHEETS = {
     'exclTransmissible', 'exclMalignancy', 'exclSepsis', 'exclSystemic',
     'pledgerCard', 'familyApproached', 'staffName', 'contactExt', 'notes',
     'status', 'acknowledgedBy', 'acknowledgedAt', 'outcome', 'refusalReason',
-    'escalationCount'
+    'escalationCount',
+    // --- Dashboard/cockpit additions (DASHBOARD_PLAN.md §3). ISO, Asia/KL. ---
+    // These are populated post-referral by the admin cockpit, NOT by the form.
+    // They must stay APPENDED (never reordered/inserted) so existing column
+    // indices used elsewhere never shift.
+    'bloodTakenAt',        // resolves the 4h serology window
+    'serologyResultAt',    // flags "result overdue" in the exceptions strip
+    'medicoLegal',         // Y/N — gates the medico-legal exception
+    'teamAlertedOphthal',  // procurement-team readiness (cornea)
+    'teamAlertedOrtho',    // procurement-team readiness (bone)
+    'teamAlertedPlastic',  // procurement-team readiness (skin)
+    'teamAlertedIJN',      // procurement-team readiness (heart valve)
+    'otAlerted',           // OT alerted
+    'forensicsAlerted',    // forensics alerted
+    'phase',               // pipeline phase for the active-case board
+    'tissueCornea',        // per-tissue outcome — yield counts
+    'tissueValve',
+    'tissueBone',
+    'tissueSkin',
+    'familyApproachedAt',  // funnel timing
+    'consentedAt'          // funnel timing
   ],
   Users: [
     'username', 'pinHash', 'salt', 'name', 'role', 'oncall',
@@ -167,6 +187,58 @@ function initializeDatabase() {
 function resetDatabasePointer() {
   PropertiesService.getScriptProperties().deleteProperty(PROP_SPREADSHEET_ID);
   Logger.log('Pointer cleared. Run initializeDatabase() to build a new spreadsheet.');
+}
+
+/**
+ * ONE-TIME migration for an already-initialized database.
+ *
+ * initializeDatabase() is idempotent and will NOT touch an existing spreadsheet,
+ * so when the Referrals schema (SHEETS.Referrals) grows, an existing sheet keeps
+ * its old header row. Run this once from the editor to bring the live Referrals
+ * sheet up to the current schema.
+ *
+ * What it does — and deliberately does NOT do:
+ *   - APPENDS any header from SHEETS.Referrals that is missing, to the RIGHT of
+ *     the existing columns, in schema order. Existing columns are never moved,
+ *     renamed, or deleted, so every column index used elsewhere stays fixed.
+ *   - Leaves existing data rows blank in the new columns (old referrals never had
+ *     that data — blank is correct).
+ *   - Idempotent: running it again when nothing is missing is a no-op.
+ *
+ * It does not reorder to match schema order; it only adds what's absent. If the
+ * live headers are a prefix of the schema (the normal case), the result matches
+ * SHEETS.Referrals exactly.
+ */
+function migrateReferralsColumns() {
+  var sheet = getSheet_('Referrals'); // throws a clear error if DB not initialized
+  var schema = SHEETS.Referrals;
+
+  var lastCol = sheet.getLastColumn();
+  var existing = lastCol > 0
+    ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h).trim(); })
+    : [];
+
+  var present = {};
+  existing.forEach(function (h) { if (h !== '') present[h] = true; });
+
+  var missing = schema.filter(function (h) { return !present[h]; });
+
+  if (!missing.length) {
+    Logger.log('migrateReferralsColumns: Referrals sheet already has all ' +
+               schema.length + ' schema columns. Nothing to do.');
+    return;
+  }
+
+  // Append missing headers to the right of the current last column.
+  var startCol = lastCol + 1;
+  var range = sheet.getRange(1, startCol, 1, missing.length);
+  range.setValues([missing]);
+  range.setFontWeight('bold');
+  sheet.autoResizeColumns(startCol, missing.length);
+
+  Logger.log('migrateReferralsColumns: added ' + missing.length +
+             ' column(s) at position ' + startCol + ': ' + missing.join(', '));
+  Logger.log('Referrals now has ' + sheet.getLastColumn() + ' columns.');
 }
 
 /**

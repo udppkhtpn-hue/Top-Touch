@@ -83,7 +83,28 @@ function submitReferral(payload, code) {
       '',                               // acknowledgedAt
       '',                               // outcome
       '',                               // refusalReason
-      0                                 // escalationCount
+      0,                                // escalationCount
+      // --- Dashboard/cockpit columns (DASHBOARD_PLAN.md §3). ---
+      // The form never sets these; the admin cockpit fills them in later. They
+      // are written empty here ONLY to keep the row width aligned with the
+      // header, so their column indices stay fixed. Order must match SHEETS
+      // .Referrals in Setup.gs exactly.
+      '',                               // bloodTakenAt
+      '',                               // serologyResultAt
+      '',                               // medicoLegal
+      '',                               // teamAlertedOphthal
+      '',                               // teamAlertedOrtho
+      '',                               // teamAlertedPlastic
+      '',                               // teamAlertedIJN
+      '',                               // otAlerted
+      '',                               // forensicsAlerted
+      'NEW',                            // phase (mirrors status at creation)
+      '',                               // tissueCornea
+      '',                               // tissueValve
+      '',                               // tissueBone
+      '',                               // tissueSkin
+      '',                               // familyApproachedAt
+      ''                                // consentedAt
     ];
     sheet.appendRow(row);
     SpreadsheetApp.flush(); // guarantee the write lands before releasing the lock
