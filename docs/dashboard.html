@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Internal staff tool; keep out of search indexes (SPEC §6.4). robots.txt also disallows the whole site. -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1B7A43">
+  <title>Papan Data — T.O.P. Touch</title>
+  <meta name="description" content="Papan data agregat rujukan penderma — TOP Team HTPN. Statistik sahaja; tiada maklumat pesakit.">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Chart.js from CDN (per request). If the hospital network blocks CDNs, the
+       page detects the missing library and falls back to data tables. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ---- Papan Data — page-scoped styles (kept out of the shared critical CSS) ---- */
+    .dash-wrap { max-width: var(--maxw-wide); }
+    .dash-intro { margin: 6px 0 22px; }
+    .dash-intro h1 { margin: 0 0 6px; }
+    .dash-intro .lede { color: var(--muted); margin: 0; }
+
+    /* Gate card */
+    .gate { max-width: 460px; margin: 40px auto; background: var(--white);
+      border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 26px 22px; }
+    .gate h2 { margin: 0 0 4px; }
+    .gate p { color: var(--muted); margin: 0 0 18px; }
+    .gate label { display: block; font-weight: 600; margin-bottom: 6px; }
+    .gate input { width: 100%; height: var(--tap); padding: 0 14px; font-size: 1.05rem;
+      border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface);
+      color: var(--ink); }
+    .gate input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-light); }
+    .gate .btn { width: 100%; margin-top: 16px; }
+    .gate-err { color: var(--danger); font-weight: 600; margin-top: 14px; min-height: 1.2em; }
+
+    /* Filter bar */
+    .dash-filter { display: flex; flex-wrap: wrap; gap: 10px; align-items: end;
+      margin-bottom: 20px; }
+    .dash-filter .f-field { display: flex; flex-direction: column; gap: 4px; }
+    .dash-filter label { font-size: .82rem; font-weight: 600; color: var(--muted); }
+    .dash-filter input[type="month"], .dash-filter select {
+      height: 44px; padding: 0 10px; border: 1px solid var(--line);
+      border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-size: .95rem; }
+    .dash-asof { margin-left: auto; align-self: center; font-size: .8rem; color: var(--muted); }
+
+    /* KPI tiles */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px; margin-bottom: 22px; }
+    .kpi { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); padding: 16px 18px; }
+    .kpi .k-val { font-family: var(--font-display); font-weight: 800; font-size: 2rem;
+      color: var(--green-dark); line-height: 1.1; }
+    .kpi .k-val .unit { font-size: .9rem; font-weight: 600; color: var(--muted); margin-left: 4px; }
+    .kpi .k-lbl { font-size: .85rem; color: var(--muted); margin-top: 4px; }
+
+    /* Chart cards */
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px; }
+    .chart-card { background: var(--white); border: 1px solid var(--line);
+      border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 18px; }
+    .chart-card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+    .chart-card .c-sub { margin: 0 0 14px; font-size: .82rem; color: var(--muted); }
+    .chart-box { position: relative; height: 260px; }
+    .chart-note { margin-top: 12px; font-size: .78rem; color: var(--muted); }
+
+    /* Table fallback (used only if Chart.js fails to load) */
+    .fallback-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    .fallback-table th, .fallback-table td { text-align: left; padding: 7px 8px;
+      border-bottom: 1px solid var(--line); }
+    .fallback-table td:last-child, .fallback-table th:last-child { text-align: right; }
+
+    .dash-hidden { display: none !important; }
+    .privacy-foot { margin: 22px 0 10px; padding: 12px 14px; background: var(--green-tint);
+      border-radius: var(--radius-sm); font-size: .82rem; color: var(--green-darker); }
+    .cdn-warn { margin-bottom: 18px; padding: 12px 14px; background: #fff5e6;
+      border: 1px solid var(--amber); border-radius: var(--radius-sm); color: #7a4a00; font-size: .88rem; }
+  </style>
+</head>
+<body>
+
+  <header class="masthead">
+    <div class="container">
+      <a class="brand-link" href="index.html" aria-label="T.O.P. Touch — Laman Utama">
+        <img class="brand-mark" src="img/logo.png" alt="Logo T.O.P. Touch" width="36" height="36">
+        <span class="brand">T.O.P. Touch</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-label="Buka menu" aria-controls="siteNav" aria-expanded="false">
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
+
+      <nav class="site-nav" id="siteNav" aria-label="Navigasi utama">
+        <ul>
+          <li><a class="nav-link" href="index.html">Utama</a></li>
+          <li><a class="nav-link" href="refer.html">Rujuk Kes</a></li>
+          <li><span class="nav-soon" aria-disabled="true" title="Akan datang">Pendidikan<span class="nav-soon-tag">Akan datang</span></span></li>
+          <li><a class="nav-link" href="dashboard.html" aria-current="page">Papan Data</a></li>
+          <li><a class="nav-link" href="admin.html">Admin</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="container dash-wrap">
+
+        <!-- GATE: shared-code check -->
+        <form class="gate" id="gate" autocomplete="off">
+          <h2>Papan Data</h2>
+          <p>Masukkan kod kongsi untuk melihat statistik agregat. Papan data ini menunjukkan
+             nombor sahaja — tiada maklumat pesakit.</p>
+          <label for="dashCode">Kod papan data</label>
+          <input type="password" id="dashCode" name="dashCode" inputmode="text"
+                 autocapitalize="characters" autocomplete="off" aria-describedby="gateErr" required>
+          <button type="submit" class="btn btn-primary btn-lg" id="gateBtn">Lihat papan data</button>
+          <div class="gate-err" id="gateErr" role="alert" aria-live="polite"></div>
+        </form>
+
+        <!-- DASHBOARD (revealed after a valid code) -->
+        <div id="dashboard" class="dash-hidden">
+          <div class="dash-intro">
+            <h1>Statistik Rujukan</h1>
+            <p class="lede">Agregat sahaja · nilai kecil disekat atas sebab privasi.</p>
+          </div>
+
+          <div class="cdn-warn dash-hidden" id="cdnWarn">
+            ⚠️ Perpustakaan carta gagal dimuat (kemungkinan sekatan rangkaian hospital).
+            Statistik ditunjukkan sebagai jadual di bawah.
+          </div>
+
+          <div class="dash-filter">
+            <div class="f-field">
+              <label for="fMonth">Bulan</label>
+              <input type="month" id="fMonth">
+            </div>
+            <div class="f-field">
+              <label for="fScope">Julat</label>
+              <select id="fScope">
+                <option value="month">Bulan dipilih</option>
+                <option value="ytd">Sepanjang tahun ini</option>
+                <option value="all">Sepanjang masa</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-ghost" id="fApply">Papar</button>
+            <span class="dash-asof" id="asOf"></span>
+          </div>
+
+          <!-- KPI tiles -->
+          <div class="kpi-grid">
+            <div class="kpi"><div class="k-val" id="kpiMonth">—</div><div class="k-lbl">Rujukan bulan ini</div></div>
+            <div class="kpi"><div class="k-val" id="kpiYtd">—</div><div class="k-lbl">Terkumpul tahun ini (YTD)</div></div>
+            <div class="kpi"><div class="k-val" id="kpiRefer">—</div><div class="k-lbl">Median kematian → rujukan</div></div>
+            <div class="kpi"><div class="k-val" id="kpiAck">—</div><div class="k-lbl">Median masa untuk akui</div></div>
+          </div>
+
+          <!-- Charts -->
+          <div class="card-grid">
+            <div class="chart-card">
+              <h3>Rujukan mengikut wad</h3>
+              <p class="c-sub">Bilangan rujukan bagi julat dipilih.</p>
+              <div class="chart-box" id="chartWardBox"><canvas id="chartWard"></canvas></div>
+              <div class="chart-note" id="wardNote"></div>
+            </div>
+
+            <div class="chart-card">
+              <h3>Corong penukaran</h3>
+              <p class="c-sub">Dirujuk → Diakui → Keluarga didekati → Setuju → Diperoleh.</p>
+              <div class="chart-box" id="chartFunnelBox"><canvas id="chartFunnel"></canvas></div>
+            </div>
+
+            <div class="chart-card">
+              <h3>Sebab keengganan</h3>
+              <p class="c-sub">Seluruh hospital (kategori Borang Audit Kematian).</p>
+              <div class="chart-box" id="chartRefusalBox"><canvas id="chartRefusal"></canvas></div>
+              <div class="chart-note" id="refusalNote"></div>
+            </div>
+
+            <div class="chart-card">
+              <h3>Hasil tisu</h3>
+              <p class="c-sub">Bilangan tisu diperoleh bagi julat dipilih.</p>
+              <div class="chart-box" id="chartTissueBox"><canvas id="chartTissue"></canvas></div>
+              <div class="chart-note" id="tissueNote"></div>
+            </div>
+          </div>
+
+          <div class="privacy-foot">
+            🔒 Sebarang bilangan di bawah <span id="threshVal">5</span> disekat (dipapar sebagai
+            “&lt;<span id="threshVal2">5</span>” atau disembunyikan) supaya tiada kes tunggal boleh dikenal pasti.
+            Tiada jadual silang (wad × hasil × sebab). Statistik agregat sahaja.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="container">
+        T.O.P. Touch (Sentuhan Keikhlasan) · Tissue &amp; Organ Procurement (TOP) Team, HTPN<br>
+        Tiada maklumat pesakit dipaparkan di laman ini.
+      </div>
+    </footer>
+  </main>
+
+  <!-- All deferred so they run in document order AFTER the deferred Chart.js in
+       <head>: chart → config → api → dashboard → nav. (A normal end-of-body
+       script would otherwise execute before the head's deferred Chart.js and see
+       window.Chart undefined.) -->
+  <script defer src="js/config.js"></script>
+  <script defer src="js/api.js"></script>
+  <script defer src="js/dashboard.js"></script>
+  <script defer src="js/nav.js"></script>
+</body>
+</html>

@@ -248,6 +248,18 @@ function getLiveCases(token) {
         unackEscalated: status === 'NEW' && createdAt !== null &&
           minutesBetween_(now, createdAt) > escalationMinutes
       },
+      // C4 coordination readiness (DASHBOARD_PLAN §2.C4). Read-only status of the
+      // DCD-checklist alert steps; toggling them needs the Phase 2 updateReferral
+      // write endpoint (not yet built).
+      coordination: {
+        ophthal: isAffirmative_(r[idx.teamAlertedOphthal]),
+        ortho: isAffirmative_(r[idx.teamAlertedOrtho]),
+        plastic: isAffirmative_(r[idx.teamAlertedPlastic]),
+        ijn: isAffirmative_(r[idx.teamAlertedIJN]),
+        ot: isAffirmative_(r[idx.otAlerted]),
+        forensics: isAffirmative_(r[idx.forensicsAlerted])
+      },
+      status: status,
       acknowledgedBy: String(r[idx.acknowledgedBy] || ''),
       owner: String(r[idx.acknowledgedBy] || '')
     };
@@ -260,7 +272,30 @@ function getLiveCases(token) {
   // Audit one identifier-light row per view (DASHBOARD_PLAN §2).
   appendAudit_(user.username || 'admin', 'VIEW_LIVE_CASES', '', 'openCases=' + cases.length);
 
-  return { ok: true, data: { cases: cases } };
+  return { ok: true, data: { cases: cases, oncall: readOncall_(), serverTime: toIso_(now) } };
+}
+
+/**
+ * On-call & backup roster (C4) — names + roles of users flagged on-call in the
+ * Users sheet. Token-gated caller only; no PINs/hashes/tokens are read out.
+ * @return {Array<{name:string, role:string}>}
+ */
+function readOncall_() {
+  var out = [];
+  try {
+    var values = getSheet_('Users').getDataRange().getValues();
+    var idx = buildColIndex_(values[0]);
+    for (var i = 1; i < values.length; i++) {
+      if (!isAffirmative_(values[i][idx.oncall])) continue;
+      out.push({
+        name: String(values[i][idx.name] || values[i][idx.username] || ''),
+        role: String(values[i][idx.role] || '')
+      });
+    }
+  } catch (e) {
+    // Roster is non-critical; an empty list is an acceptable degraded state.
+  }
+  return out;
 }
 
 /** Per-window status: {limitMin, remainingMin, resolved}. remainingMin may be negative (overdue). */
@@ -285,30 +320,9 @@ function urgencyKey_(c) {
   return Math.min.apply(null, mins);
 }
 
-// ===========================================================================
-// Token validation — PROVISIONAL.
-// Token ISSUANCE (login) is Phase 2 and belongs in Auth.gs. This validator only
-// READS the Users sheet's existing sessionToken/tokenExpiry columns, so the
-// admin gate is enforceable now. When Auth.gs is built it should OWN this
-// function; remove this copy then to avoid a duplicate definition.
-// ===========================================================================
-function validateToken_(token) {
-  if (!token) return null;
-  var values = getSheet_('Users').getDataRange().getValues();
-  var idx = buildColIndex_(values[0]);
-  for (var i = 1; i < values.length; i++) {
-    var row = values[i];
-    if (String(row[idx.sessionToken] || '') !== String(token)) continue;
-    var exp = asDate_(row[idx.tokenExpiry]);
-    if (!exp || exp.getTime() <= Date.now()) return null; // missing/expired
-    return {
-      username: String(row[idx.username] || ''),
-      name: String(row[idx.name] || ''),
-      role: String(row[idx.role] || '')
-    };
-  }
-  return null;
-}
+// Token validation (validateToken_) now lives in Auth.gs, which OWNS the admin
+// session lifecycle (login issues the token; validateToken_ checks it). It is a
+// shared global, so getLiveCases above calls it directly.
 
 // ===========================================================================
 // Small shared helpers

@@ -52,10 +52,17 @@ function doPost(e) {
         result = getLiveCases(token);
         break;
 
+      // ---- Phase 2: admin auth (Auth.gs) ----
+      case 'login':
+        result = login(payload);
+        break;
+      case 'logout':
+        result = logout(token);
+        break;
+
       // ---- Later phases: stubbed, signatures visible ----
       case 'getEducation':      // Phase 3
       case 'getConfigPublic':   // Phase 3 (must never leak codes)
-      case 'login':             // Phase 2
       case 'listReferrals':     // Phase 2
       case 'updateReferral':    // Phase 2
       case 'exportCsv':         // Phase 4
