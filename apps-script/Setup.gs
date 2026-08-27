@@ -93,6 +93,7 @@ var DEFAULT_CONFIG = [
   ['maxEscalations',    '3'],
   ['adminUrl',          ''],                       // fill with .../admin.html after Pages is live
   ['dashboardCode',     'TOPDASH'],               // change before dashboard go-live (Phase 4)
+  ['smallCellThreshold', '5'],                     // dashboard: suppress any count below this (privacy)
   ['wardCode',          ''],                       // set a code only if wardCodeEnabled = true
   ['wardCodeEnabled',   'false'],                  // off by default
   ['chatWebhookUrl',    ''],                        // Google Chat space incoming-webhook URL (blank = channel off)

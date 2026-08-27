@@ -38,14 +38,26 @@ function doPost(e) {
         result = submitReferral(payload, code);
         break;
 
+      // ---- Phase 4: dashboard reads (Dashboard.gs) ----
+      // Aggregate-only, dashboardCode-gated. `getDashboardPublic` is the SPEC §8
+      // name; `getDashboard` is the alias used by the frontend.
+      case 'getDashboard':
+      case 'getDashboardPublic':
+        result = getDashboard(payload, code);
+        break;
+      // Open cases + window status, token-gated, audited. `getDashboardAdmin` is
+      // the SPEC §8 name; `getLiveCases` is the alias used by the cockpit.
+      case 'getLiveCases':
+      case 'getDashboardAdmin':
+        result = getLiveCases(token);
+        break;
+
       // ---- Later phases: stubbed, signatures visible ----
       case 'getEducation':      // Phase 3
       case 'getConfigPublic':   // Phase 3 (must never leak codes)
-      case 'getDashboardPublic':// Phase 4 (aggregate-only, code-gated)
       case 'login':             // Phase 2
       case 'listReferrals':     // Phase 2
       case 'updateReferral':    // Phase 2
-      case 'getDashboardAdmin': // Phase 4
       case 'exportCsv':         // Phase 4
       case 'manageEducation':   // Phase 3
       case 'manageUsers':       // Phase 2
