@@ -60,12 +60,16 @@ function doPost(e) {
         result = logout(token);
         break;
 
+      // ---- Phase 4: NTRC CSV export (Dashboard.gs) — token-gated, audited ----
+      case 'exportCsv':
+        result = exportCsv(payload, token);
+        break;
+
       // ---- Later phases: stubbed, signatures visible ----
       case 'getEducation':      // Phase 3
       case 'getConfigPublic':   // Phase 3 (must never leak codes)
       case 'listReferrals':     // Phase 2
       case 'updateReferral':    // Phase 2
-      case 'exportCsv':         // Phase 4
       case 'manageEducation':   // Phase 3
       case 'manageUsers':       // Phase 2
         result = notImplemented_(action);

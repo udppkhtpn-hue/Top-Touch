@@ -156,8 +156,14 @@
             <div class="kpi"><div class="k-val" id="kpiAck">—</div><div class="k-lbl">Median masa untuk akui</div></div>
           </div>
 
+          <!-- Range too small to show detail without risking re-identification. -->
+          <div class="cdn-warn dash-hidden" id="rangeNote">
+            🔒 Terlalu sedikit kes (&lt;<span id="threshVal3">5</span>) dalam julat tarikh ini untuk
+            memaparkan statistik terperinci tanpa risiko mengenal pasti individu. Sila luaskan julat tarikh.
+          </div>
+
           <!-- Charts -->
-          <div class="card-grid">
+          <div class="card-grid" id="cardGrid">
             <div class="chart-card">
               <h3>Rujukan mengikut wad</h3>
               <p class="c-sub">Bilangan rujukan bagi julat dipilih.</p>
@@ -169,6 +175,7 @@
               <h3>Corong penukaran</h3>
               <p class="c-sub">Dirujuk → Diakui → Keluarga didekati → Setuju → Diperoleh.</p>
               <div class="chart-box" id="chartFunnelBox"><canvas id="chartFunnel"></canvas></div>
+              <div class="chart-note" id="funnelNote"></div>
             </div>
 
             <div class="chart-card">

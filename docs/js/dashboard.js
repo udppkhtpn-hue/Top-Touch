@@ -148,19 +148,29 @@
   function render(data) {
     // Threshold labels
     var th = (data.meta && data.meta.smallCellThreshold) || 5;
-    setText('threshVal', th); setText('threshVal2', th);
+    setText('threshVal', th); setText('threshVal2', th); setText('threshVal3', th);
 
     // "As of"
     if (data.meta && data.meta.cachedAt) {
       asOf.textContent = 'Sehingga ' + formatStamp(data.meta.cachedAt);
     }
 
-    // KPIs
+    // KPIs. A suppressed count comes back null -> show "<5" (0 stays 0).
     var v = data.volume || {};
-    setText('kpiMonth', v.monthToDate == null ? '—' : v.monthToDate);
-    setText('kpiYtd', v.ytd == null ? '—' : v.ytd);
+    setText('kpiMonth', v.monthToDate == null ? '<5' : v.monthToDate);
+    setText('kpiYtd', v.ytd == null ? '<5' : v.ytd);
     setHtml('kpiRefer', minutesTile(data.timeToReferMedianMin));
     setHtml('kpiAck', minutesTile(data.timeToAckMedianMin));
+
+    // Range guard: when the whole filtered range is 1..threshold-1 referrals the
+    // server suppresses every range-scoped figure. Show one notice instead of a
+    // grid of blanked charts (the calendar KPIs above stay, already suppressed).
+    var rs = !!(data.meta && data.meta.rangeSuppressed);
+    var rangeNote = document.getElementById('rangeNote');
+    var cardGrid = document.getElementById('cardGrid');
+    if (rangeNote) rangeNote.classList.toggle('dash-hidden', !rs);
+    if (cardGrid) cardGrid.classList.toggle('dash-hidden', rs);
+    if (rs) return; // nothing range-scoped to draw
 
     renderWard(data.byWard || []);
     renderFunnel(data.funnel || {});
@@ -203,7 +213,11 @@
       ['Diperoleh', f.procured]
     ];
     var labels = stages.map(function (s) { return s[0]; });
+    // A suppressed stage (<5) arrives as null; draw it as 0 so no small count is
+    // shown, and say so — a 0 here may mean "<5 disekat", not a true zero.
+    var anySuppressed = stages.some(function (s) { return s[1] === null; });
     var values = stages.map(function (s) { return s[1] == null ? 0 : s[1]; });
+    setText('funnelNote', anySuppressed ? 'Peringkat dengan <5 kes disekat (dipapar sebagai 0).' : '');
 
     if (!hasChart) {
       return fallbackTable('chartFunnel', ['Peringkat', 'Bilangan'],

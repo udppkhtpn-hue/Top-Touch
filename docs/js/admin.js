@@ -161,6 +161,39 @@
 
   btnRefresh.addEventListener('click', function () { poll(); });
 
+  // ---- NTRC CSV export (admin-tier, token-gated, audited server-side) ----
+  var btnExport = document.getElementById('btnExport');
+  var expStatusMsg = document.getElementById('expStatusMsg');
+  if (btnExport) btnExport.addEventListener('click', function () {
+    if (!token) { forceLogout('Sila log masuk semula.'); return; }
+    var from = document.getElementById('expFrom').value;
+    var to = document.getElementById('expTo').value;
+    var status = document.getElementById('expStatus').value;
+    btnExport.disabled = true;
+    expStatusMsg.textContent = 'Menyediakan eksport…';
+    apiPost('exportCsv', { from: from, to: to, status: status }, { token: token })
+      .then(function (res) {
+        if (!res || res.ok !== true) {
+          if (res && res.error === 'unauthorized') { forceLogout('Sesi tamat. Sila log masuk semula.'); return; }
+          throw new Error((res && res.error) || 'export_error');
+        }
+        downloadCsv(res.data.filename || 'TOP-Referrals.csv', res.data.csv || '');
+        expStatusMsg.textContent = (res.data.count || 0) + ' baris dieksport · ' + (res.data.filename || '');
+      })
+      .catch(function () { expStatusMsg.textContent = 'Ralat eksport. Cuba lagi.'; })
+      .then(function () { btnExport.disabled = false; });
+  });
+
+  // Trigger a client-side download of the CSV text (BOM so Excel reads Malay + UTF-8).
+  function downloadCsv(filename, csv) {
+    var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
   // Pause polling while the tab is hidden (save Apps Script quota); refresh on return.
   document.addEventListener('visibilitychange', function () {
     if (!token) return;

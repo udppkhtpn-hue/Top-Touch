@@ -147,41 +147,69 @@ function computeDashboard_(from, to, threshold) {
     if ((t || m || s || y) && status === 'PROCURED') excl.proceededDespiteFlag++;
   }
 
+  // ---- Small-cell suppression (CLAUDE.md rule 6; DASHBOARD_PLAN §7) ----
+  // EVERY count < threshold is suppressed, not just the categorical breakdowns.
+  // The dashboard is date-range filterable, so volume / funnel / medians are NOT
+  // safe "top-line" figures: a narrow filter can shrink them to a single case
+  // (funnel.referred:1 … procured:1, or a median over one row = that row's exact
+  // timing). Two layers:
+  //   1. Range guard: if the whole filtered range holds 1..threshold-1 referrals,
+  //      every range-scoped figure is single-case territory -> suppress them all.
+  //   2. Cell guard: otherwise, suppress any individual count < threshold, and any
+  //      median whose sample size is < threshold.
+  function sc(n) { return suppressCount_(n, threshold); }
+  var rangeSuppressed = (referred > 0 && referred < threshold);
+
+  // Volume is calendar-scoped (month/YTD, independent of the date filter), but a
+  // count < threshold is still a small cell -> suppress it too.
+  var volumeOut = {
+    monthToDate: sc(monthToDate),
+    ytd: sc(ytd),
+    trend: objToSortedArray_(trend, 'month', 'count').map(function (t) {
+      return { month: t.month, count: sc(t.count) };
+    })
+  };
+
+  var funnelOut, refMed, ackMed, byWardOut, refusalOut, tissueOut, exclOut;
+  if (rangeSuppressed) {
+    funnelOut = { referred: null, acknowledged: null, familyApproached: null, consented: null, procured: null };
+    refMed = null; ackMed = null;
+    byWardOut = []; refusalOut = [];
+    tissueOut = { cornea: null, valve: null, bone: null, skin: null };
+    exclOut = { transmissible: null, malignancy: null, sepsis: null, systemic: null, proceededDespiteFlag: null };
+  } else {
+    funnelOut = {
+      referred: sc(referred), acknowledged: sc(acknowledged),
+      familyApproached: sc(familyApproached), consented: sc(consented), procured: sc(procured)
+    };
+    // A median over fewer than `threshold` values re-exposes an individual's timing.
+    refMed = referToMins.length < threshold ? null : median_(referToMins);
+    ackMed = ackMins.length < threshold ? null : median_(ackMins);
+    byWardOut = countMapToArray_(byWard, 'ward', threshold, true);
+    refusalOut = countMapToArray_(refusal, 'reason', threshold, true);
+    tissueOut = {
+      cornea: sc(tissue.cornea), valve: sc(tissue.valve),
+      bone: sc(tissue.bone), skin: sc(tissue.skin)
+    };
+    exclOut = {
+      transmissible: sc(excl.transmissible), malignancy: sc(excl.malignancy),
+      sepsis: sc(excl.sepsis), systemic: sc(excl.systemic),
+      proceededDespiteFlag: sc(excl.proceededDespiteFlag)
+    };
+  }
+
   return {
-    // Volume / funnel / medians are hospital-wide, month-level top-line figures —
-    // not single-case cells — so they are NOT small-cell suppressed.
-    volume: {
-      monthToDate: monthToDate,
-      ytd: ytd,
-      trend: objToSortedArray_(trend, 'month', 'count') // ascending by month key
-    },
-    // byWard is bare volume-per-ward: one dimension, suppressed below threshold.
-    byWard: countMapToArray_(byWard, 'ward', threshold, true),
-    timeToReferMedianMin: median_(referToMins),
-    timeToAckMedianMin: median_(ackMins),
-    funnel: {
-      referred: referred,
-      acknowledged: acknowledged,
-      familyApproached: familyApproached,
-      consented: consented,
-      procured: procured
-    },
-    refusalReasons: countMapToArray_(refusal, 'reason', threshold, true),
-    tissueYield: {
-      cornea: suppressCount_(tissue.cornea, threshold),
-      valve: suppressCount_(tissue.valve, threshold),
-      bone: suppressCount_(tissue.bone, threshold),
-      skin: suppressCount_(tissue.skin, threshold)
-    },
-    exclusionFlags: {
-      transmissible: suppressCount_(excl.transmissible, threshold),
-      malignancy: suppressCount_(excl.malignancy, threshold),
-      sepsis: suppressCount_(excl.sepsis, threshold),
-      systemic: suppressCount_(excl.systemic, threshold),
-      proceededDespiteFlag: suppressCount_(excl.proceededDespiteFlag, threshold)
-    },
+    volume: volumeOut,
+    byWard: byWardOut,
+    timeToReferMedianMin: refMed,
+    timeToAckMedianMin: ackMed,
+    funnel: funnelOut,
+    refusalReasons: refusalOut,
+    tissueYield: tissueOut,
+    exclusionFlags: exclOut,
     meta: {
       smallCellThreshold: threshold,
+      rangeSuppressed: rangeSuppressed,
       cachedAt: toIso_(new Date())
     }
   };
@@ -296,6 +324,78 @@ function readOncall_() {
     // Roster is non-critical; an empty list is an acceptable degraded state.
   }
   return out;
+}
+
+// ===========================================================================
+// TIER: Admin — exportCsv (filtered case-level export for NTRC, token-gated)
+// ===========================================================================
+
+/**
+ * Full-detail CSV of referrals in a date range, for official NTRC reporting.
+ *
+ * This is an ADMIN-tier endpoint (SPEC §4: "Admin sees full referral detail, CSV
+ * export"). It is token-gated and audited, and it DELIBERATELY includes patient
+ * identifiers — that is the sanctioned difference between this tier and the coded
+ * dashboard. It must never be reachable without a valid token, and the coded
+ * (dashboardCode) gate must never route here.
+ *
+ * @param {Object} payload  { from?:'yyyy-MM-dd', to?:'yyyy-MM-dd', status?:string }
+ * @param {string} token    admin session token
+ * @return {Object} { ok:true, data:{ csv, count, filename } } | { ok:false, error }
+ */
+function exportCsv(payload, token) {
+  var user = validateToken_(token);
+  if (!user) return { ok: false, error: 'unauthorized' };
+
+  payload = payload || {};
+  var tz = 'Asia/Kuala_Lumpur';
+  var from = payload.from ? String(payload.from) : '';
+  var to = payload.to ? String(payload.to) : '';
+  var statusFilter = payload.status ? String(payload.status).trim().toUpperCase() : '';
+
+  var values = getSheet_('Referrals').getDataRange().getValues();
+  if (values.length < 1) return { ok: false, error: 'no_data' };
+
+  var header = values[0];
+  var idx = buildColIndex_(header);
+
+  var rows = [];
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    var createdAt = asDate_(r[idx.createdAt]);
+    if (!createdAt) continue; // skip blank/partial rows
+    var cd = Utilities.formatDate(createdAt, tz, 'yyyy-MM-dd');
+    if (from && cd < from) continue;
+    if (to && cd > to) continue;
+    if (statusFilter && String(r[idx.status] || '').toUpperCase() !== statusFilter) continue;
+    rows.push(r);
+  }
+
+  // Build CSV. Dates -> ISO Asia/KL; every cell CSV-escaped.
+  var lines = [header.map(csvCell_).join(',')];
+  for (var j = 0; j < rows.length; j++) {
+    lines.push(rows[j].map(function (v) {
+      return (v instanceof Date) ? csvCell_(toIso_(v)) : csvCell_(v);
+    }).join(','));
+  }
+  var csv = lines.join('\r\n');
+
+  var rangeLabel = (from || 'awal') + '_' + (to || 'kini');
+  // Audit is identifier-light: range/status/row-count only, never patient data.
+  appendAudit_(user.username || 'admin', 'EXPORT_CSV', '',
+    'range=' + rangeLabel + ';status=' + (statusFilter || 'ALL') + ';rows=' + rows.length);
+
+  return {
+    ok: true,
+    data: { csv: csv, count: rows.length, filename: 'TOP-Referrals-' + rangeLabel + '.csv' }
+  };
+}
+
+/** CSV-escape one cell: wrap in quotes and double internal quotes when needed. */
+function csvCell_(v) {
+  var s = (v === null || v === undefined) ? '' : String(v);
+  if (/[",\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+  return s;
 }
 
 /** Per-window status: {limitMin, remainingMin, resolved}. remainingMin may be negative (overdue). */
