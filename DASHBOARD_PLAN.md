@@ -132,23 +132,25 @@ Stats \+ per-case live detail for the cockpit (identifiers allowed; view is audi
 
 ---
 
-## 5\. OPEN DECISION — Chart.js: CDN vs self-hosted
+## 5\. RESOLVED — Chart.js is self-hosted
 
-Conflict in the source docs:
+Original conflict in the source docs:
 
 - **SPEC §13:** "Frontend dependencies must be loadable via a plain `<script src>` CDN tag … Chart.js (dashboard) is the expected one."  
 - **README:** fonts are **self-hosted, "no CDN, per the restricted-network constraint."**
 
 If the hospital network blocks external CDNs (as the self-hosted fonts imply), a CDN Chart.js will fail on the ward/hospital browsers that most need the dashboard.
 
-**Default in this plan: vendor Chart.js locally** — commit `docs/js/vendor/chart.umd.min.js` and load it with a local `<script src>`, exactly as the fonts are handled. No build step; it's still a plain script tag. **Confirm with Fairis before building the dashboard page.** (If a local Chart.js feels heavy, the aggregate tiles are simple enough to draw with inline SVG \+ the zero-dependency motion toolkit, which sidesteps the question entirely.)
+**Decision (resolved): vendor Chart.js locally**, exactly as the fonts are handled. Chart.js v4.4.1 UMD is committed at `docs/js/vendor/chart.umd.min.js` and loaded with a plain local `<script defer src>` in `dashboard.html`. No build step, no CDN. `dashboard.js` still degrades every chart to a data table if the library is ever unavailable.
+
+**To upgrade:** re-download the pinned `chart.umd.min.js` dist into `docs/js/vendor/` and bump the version in the `dashboard.html` head comment.
 
 ---
 
 ## 6\. Build sequence
 
 1. **Data model** — add the Referrals columns \+ `smallCellThreshold`; update `Setup.gs`. Don't touch the referral critical path.  
-2. **Resolve §5** — confirm Chart.js hosting (vendor vs CDN vs inline SVG).  
+2. **§5 resolved** — Chart.js is self-hosted at `docs/js/vendor/chart.umd.min.js`.  
 3. **Coded dashboard backend** — `getDashboardPublic` in a new `Dashboard.gs`: aggregate via one `getDataRange().getValues()`, apply suppression \+ the no-cross-tab rule, cache \~5 min. Verify it cannot return a row.  
 4. **Coded dashboard page** — `dashboard.html` behind the `dashboardCode` gate; tiles from §1; `noindex` \+ robots.txt; chart entry animation \+ reduced-motion.  
 5. **Auth dependency** — the cockpit needs the admin login/token system (SPEC Phase 2). If it isn't built, build `Auth.gs` (login, token, PIN hashing, code checks) first.  

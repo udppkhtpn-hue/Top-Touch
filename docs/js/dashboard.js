@@ -8,10 +8,10 @@
  * and never returns a patient row. This file only *displays* numbers it is given;
  * it performs no re-identifying computation and builds no cross-tabs.
  *
- * Chart.js is loaded from a CDN in dashboard.html. If that load fails (e.g. a
- * restricted hospital network — the same reason fonts are self-hosted, see
- * DASHBOARD_PLAN §5), every chart degrades to a plain data table so the numbers
- * are still readable.
+ * Chart.js is self-hosted (docs/js/vendor/chart.umd.min.js), like the fonts, because
+ * the hospital network blocks CDNs (see DASHBOARD_PLAN §5). If the library is ever
+ * unavailable, every chart degrades to a plain data table so the numbers are still
+ * readable.
  */
 (function () {
   'use strict';

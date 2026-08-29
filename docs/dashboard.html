@@ -10,9 +10,11 @@
   <meta name="description" content="Papan data agregat rujukan penderma — TOP Team HTPN. Statistik sahaja; tiada maklumat pesakit.">
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- Chart.js from CDN (per request). If the hospital network blocks CDNs, the
-       page detects the missing library and falls back to data tables. -->
-  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Chart.js is self-hosted (v4.4.1 UMD), like the fonts, because the hospital
+       network blocks CDNs (CLAUDE.md "Dependencies" / DASHBOARD_PLAN §5). To
+       upgrade: re-download the pinned dist into docs/js/vendor/ and bump the version
+       here. If the file is ever missing the page still falls back to data tables. -->
+  <script defer src="js/vendor/chart.umd.min.js"></script>
 
   <style>
     /* ---- Papan Data — page-scoped styles (kept out of the shared critical CSS) ---- */
@@ -212,9 +214,9 @@
   </main>
 
   <!-- All deferred so they run in document order AFTER the deferred Chart.js in
-       <head>: chart → config → api → dashboard → nav. (A normal end-of-body
-       script would otherwise execute before the head's deferred Chart.js and see
-       window.Chart undefined.) -->
+       <head>: chart (self-hosted) → config → api → dashboard → nav. (A normal
+       end-of-body script would otherwise execute before the head's deferred
+       Chart.js and see window.Chart undefined.) -->
   <script defer src="js/config.js"></script>
   <script defer src="js/api.js"></script>
   <script defer src="js/dashboard.js"></script>

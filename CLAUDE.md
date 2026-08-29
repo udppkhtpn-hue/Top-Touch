@@ -15,7 +15,7 @@ Live: [https://udppkhtpn-hue.github.io/Top-Touch/](https://udppkhtpn-hue.github.
 - **Frontend:** static HTML \+ CSS \+ vanilla JS. **No framework, no build step, no bundler** (no Sass/Tailwind CLI/JSX). GitHub Pages serves `/docs` as-is. Mobile-first.  
 - **Backend:** one Google Apps Script web app — single `/exec` URL, `action`\-routed `POST` with `Content-Type: text/plain` (avoids CORS preflight; `ContentService` can't set CORS headers).  
 - **Database:** Google Sheets, private to the TOP team account.  
-- **Dependencies:** self-hosted where possible. Fonts are already self-hosted (no CDN, restricted-network constraint). **See the open Chart.js question in DASHBOARD\_PLAN.md §5 before adding any CDN `<script>`.**
+- **Dependencies:** self-hosted, no CDN (restricted-network constraint). Fonts and **Chart.js** (`docs/js/vendor/chart.umd.min.js`, v4.4.1 UMD) are self-hosted; see DASHBOARD\_PLAN.md §5. **Do not add a CDN `<script>` — vendor it locally instead.**
 
 ## What is built (README)
 
