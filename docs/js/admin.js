@@ -15,8 +15,13 @@
  *   - Exceptions strip                   (C3: unack-escalated, serology overdue,
  *                                          exclusion-flagged, medico-legal)
  *   - Live window countdowns / urgency   (C2, most-urgent-first)
- *   - Pipeline board by phase            (C1)
- *   - Per-case coordination readiness    (C4, read-only until updateReferral)
+ *   - Per-case identity strip            — first name + MyKad-derived age/gender +
+ *                                          first 6 of IC (or first 4 of passport /
+ *                                          UNHCR). Built only from patientName + icNo.
+ *   - "Respon" button per card           — the app's single status write; closes
+ *                                          the case (status = RESPONDED) so it
+ *                                          leaves the board. There is no phase
+ *                                          board and no multi-step status lifecycle.
  */
 (function () {
   'use strict';
@@ -40,17 +45,9 @@
     { key: 'medicoLegal',     label: 'Kes perundangan (medico-legal) belum dilepaskan',   sev: 'warn' }
   ];
 
-  // Per-case coordination steps (C4, DCD checklist). key -> label.
-  var COORD = [
-    ['ophthal',  'Oftal (kornea)'],
-    ['ortho',    'Ortho (tulang)'],
-    ['plastic',  'Plastik (kulit)'],
-    ['ijn',      'IJN (injap)'],
-    ['ot',       'OT'],
-    ['forensics','Forensik']
-  ];
 
-  // Canonical pipeline phases for the board (C1). key -> Bahasa Melayu label.
+  // Phase labels for the case-phase pill. key -> Bahasa Melayu label. (Open cases
+  // are all NEW now; the board that grouped by these phases has been retired.)
   var PHASES = [
     ['NEW',                   'Baharu'],
     ['ACKNOWLEDGED',          'Diakui'],
@@ -66,7 +63,6 @@
   var token = '';
   var lastData = null;      // most recent getLiveCases payload
   var clockOffset = 0;      // serverTimeMs - clientNowMs, so countdowns match server
-  var view = 'urgency';     // 'urgency' | 'board'
   var pollTimer = null, tickTimer = null;
 
   // ---- DOM refs ----
@@ -87,11 +83,7 @@
   var excStrip = document.getElementById('excStrip');
   var caseList = document.getElementById('caseList');
   var emptyUrgency = document.getElementById('emptyUrgency');
-  var board = document.getElementById('board');
   var paneUrgency = document.getElementById('paneUrgency');
-  var paneBoard = document.getElementById('paneBoard');
-  var viewUrgencyBtn = document.getElementById('viewUrgency');
-  var viewBoardBtn = document.getElementById('viewBoard');
 
   // =========================================================================
   // Login
@@ -245,7 +237,7 @@
 
     renderOncall(lastData.oncall || []);
     renderExceptions(cases);
-    if (view === 'urgency') renderUrgency(cases); else renderBoard(cases);
+    renderUrgency(cases);
     refreshAll(); // populate countdowns immediately (no blank first second)
   }
 
@@ -289,33 +281,11 @@
       return;
     }
     emptyUrgency.classList.add('ck-hidden');
-    caseList.innerHTML = sorted.map(function (c) { return caseCard(c, false); }).join('');
+    caseList.innerHTML = sorted.map(function (c) { return caseCard(c); }).join('');
   }
 
-  // ---- Pipeline board view ----
-  function renderBoard(cases) {
-    var buckets = {};
-    PHASES.forEach(function (p) { buckets[p[0]] = []; });
-    var extra = [];
-    cases.forEach(function (c) {
-      var key = normalizePhase(c.phase);
-      if (buckets[key]) buckets[key].push(c); else extra.push(c);
-    });
-    var cols = PHASES.map(function (p) { return colHtml(p[1], buckets[p[0]]); });
-    if (extra.length) cols.push(colHtml('Lain / Dalam proses', extra));
-    board.innerHTML = cols.join('');
-  }
-
-  function colHtml(label, list) {
-    var cards = list.length
-      ? list.map(function (c) { return caseCard(c, true); }).join('')
-      : '<div class="board-empty">—</div>';
-    return '<div class="board-col"><h3>' + esc(label) +
-      '<span class="col-n">' + list.length + '</span></h3>' + cards + '</div>';
-  }
-
-  // ---- Case card (shared) ----
-  function caseCard(c, compact) {
+  // ---- Case card ----
+  function caseCard(c) {
     var todMs = Date.parse(c.timeOfDeath || '');
     if (isNaN(todMs)) todMs = 0;
 
@@ -338,28 +308,56 @@
       badges.map(function (b) { return '<span class="badge ' + b[0] + '">' + esc(b[1]) + '</span>'; }).join('') +
       '</div>' : '';
 
-    var coordHtml = compact ? '' : buildCoord(c.coordination || {});
+    var idHtml = patientBits(c);
 
     var bed = c.bed ? '<span class="case-bed">Katil ' + esc(c.bed) + '</span>' : '';
     var owner = c.owner ? ' · ' + esc(c.owner) : '';
 
+    // The app's single status action: mark the case responded, which closes it
+    // (server sets status = RESPONDED) so it drops off the live board on next poll.
+    var respondHtml = '<div class="case-actions">' +
+      '<button type="button" class="btn-respond" data-id="' + esc(c.id || '') + '">' +
+      'Respon</button></div>';
+
     return '<div class="case-card" data-tod="' + todMs + '">' +
       '<div class="case-top"><span class="case-ward">' + esc(c.ward || '—') + '</span>' + bed +
       '<span class="case-id">' + esc(c.id || '') + '</span></div>' +
+      idHtml +
       '<div class="case-sub"><span class="case-phase">' + esc(phaseLabel(c)) + '</span> · ' +
       'Berlalu <span class="case-elapsed">—</span>' + owner + '</div>' +
-      windowsHtml + badgesHtml + coordHtml + '</div>';
+      windowsHtml + badgesHtml + respondHtml + '</div>';
   }
 
-  function buildCoord(coord) {
-    var items = COORD.map(function (c) {
-      var done = !!coord[c[0]];
-      return '<span class="coord-item' + (done ? ' done' : '') + '">' +
-        '<span class="tick">' + (done ? '✓' : '○') + '</span>' + esc(c[1]) + '</span>';
-    }).join('');
-    return '<div class="coord"><div class="coord-lbl">Kesediaan koordinasi</div>' +
-      '<div class="coord-list">' + items + '</div>' +
-      '<div class="coord-note">Status daripada rekod kes (baca sahaja).</div></div>';
+  // Patient identity strip, built ONLY from what the referral form actually
+  // collects: patientName + icNo. Shows the first name; and from a 12-digit MyKad,
+  // the derived age + gender + first 6 digits. A non-MyKad id (passport / UNHCR)
+  // shows its first 4 characters only. Age, gender and race are NOT collected for
+  // foreigners (and race is not collected for anyone) — so they are not shown.
+  function patientBits(c) {
+    var name = String(c.patientName || '').trim();
+    var first = name ? name.split(/\s+/)[0] : '';
+    var raw = String(c.icNo || '').trim();
+    var digits = raw.replace(/\D/g, '');
+    var parts = [];
+    if (first) parts.push('<span class="pb-name">' + esc(first) + '</span>');
+    if (digits.length === 12) {                 // MyKad: derive age + gender
+      var yy = parseInt(digits.slice(0, 2), 10);
+      var mm = parseInt(digits.slice(2, 4), 10);
+      var dd = parseInt(digits.slice(4, 6), 10);
+      var now = new Date(), nowY = now.getFullYear();
+      var birthY = (2000 + yy) <= nowY ? 2000 + yy : 1900 + yy;
+      var age = nowY - birthY;
+      if ((now.getMonth() + 1) < mm || ((now.getMonth() + 1) === mm && now.getDate() < dd)) age--;
+      var gender = (parseInt(digits.slice(11), 10) % 2 === 1) ? 'Lelaki' : 'Perempuan';
+      if (age >= 0 && age < 130) parts.push('<span class="pb">' + age + ' tahun</span>');
+      parts.push('<span class="pb">' + gender + '</span>');
+      // First 6 (birthdate) shown; the rest masked — NNNNNN - XX - XXXX.
+      parts.push('<span class="pb pb-id">' + esc(digits.slice(0, 6)) + ' - XX - XXXX</span>');
+    } else if (raw) {                           // passport / UNHCR: first 4 shown, rest masked
+      parts.push('<span class="pb pb-id">' + esc(raw.slice(0, 4).toUpperCase()) + ' - XXXX</span>');
+    }
+    if (!parts.length) return '';
+    return '<div class="case-idbits">' + parts.join('<span class="pb-sep">·</span>') + '</div>';
   }
 
   // =========================================================================
@@ -367,8 +365,7 @@
   // =========================================================================
   function refreshAll() {
     var effNow = Date.now() + clockOffset;
-    var pane = (view === 'urgency') ? paneUrgency : paneBoard;
-    var cards = pane.querySelectorAll('.case-card');
+    var cards = paneUrgency.querySelectorAll('.case-card');
     for (var i = 0; i < cards.length; i++) updateCard(cards[i], effNow);
   }
 
@@ -422,21 +419,33 @@
   }
 
   // =========================================================================
-  // View toggle
+  // Respond & close — the app's single status write (token-gated, audited).
+  // A responder taps this on a card when they go to attend the case; the server
+  // sets status = RESPONDED and the case drops off the live board on the refetch.
   // =========================================================================
-  viewUrgencyBtn.addEventListener('click', function () { setView('urgency'); });
-  viewBoardBtn.addEventListener('click', function () { setView('board'); });
-
-  function setView(v) {
-    if (v === view) return;
-    view = v;
-    var urg = v === 'urgency';
-    viewUrgencyBtn.setAttribute('aria-pressed', urg ? 'true' : 'false');
-    viewBoardBtn.setAttribute('aria-pressed', urg ? 'false' : 'true');
-    paneUrgency.classList.toggle('ck-hidden', !urg);
-    paneBoard.classList.toggle('ck-hidden', urg);
-    if (lastData) { if (urg) renderUrgency(lastData.cases || []); else renderBoard(lastData.cases || []); refreshAll(); }
-  }
+  caseList.addEventListener('click', function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest('.btn-respond') : null;
+    if (!btn) return;
+    var id = btn.getAttribute('data-id');
+    if (!id) return;
+    if (!token) { forceLogout('Sila log masuk semula.'); return; }
+    if (!window.confirm('Tutup kes ' + id + '? Ia akan ditanda sebagai telah direspons dan keluar dari papan langsung.')) return;
+    btn.disabled = true;
+    btn.textContent = 'Menutup…';
+    apiPost('respondReferral', { id: id }, { token: token })
+      .then(function (res) {
+        if (!res || res.ok !== true) {
+          if (res && res.error === 'unauthorized') { forceLogout('Sesi tamat. Sila log masuk semula.'); return; }
+          throw new Error((res && res.error) || 'respond_error');
+        }
+        poll(); // refetch; the closed case is gone from getLiveCases
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = 'Respon';
+        window.alert('Ralat menutup kes. Cuba lagi.');
+      });
+  });
 
   // =========================================================================
   // Helpers

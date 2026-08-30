@@ -148,6 +148,59 @@ function submitReferral(payload, code) {
 }
 
 /**
+ * respondReferral — an admin marks a live case as responded, closing it out of the
+ * cockpit. This is the ONLY status write in the app. There is deliberately no
+ * multi-step lifecycle: the ward creates a case as NEW, and when a TOP team member
+ * goes to attend it they tap "Respons & tutup", which sets status = RESPONDED (a
+ * CLOSED status, so getLiveCases drops it from the live board) and records who
+ * responded and when. It replaces the old plan of hand-editing the Google Sheet.
+ *
+ * Admin-tier: token-gated and audited. It never touches the ward's ~60-second
+ * submission path (that is submitReferral, above).
+ *
+ * @param {Object} payload  { id: 'REF-YYYYMMDD-NNN' }
+ * @param {string} token    admin session token (validated in Auth.gs)
+ * @return {Object} { ok:true, data:{ id, status } } | { ok:false, error }
+ */
+function respondReferral(payload, token) {
+  var user = validateToken_(token);
+  if (!user) return { ok: false, error: 'unauthorized' };
+
+  payload = payload || {};
+  var id = String(payload.id || '').trim();
+  if (!id) return { ok: false, error: 'missing_id' };
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var sheet = getSheet_('Referrals');
+    var values = sheet.getDataRange().getValues();
+    var idx = buildColIndex_(values[0]); // shared helper (Dashboard.gs)
+
+    var rowNum = -1; // 1-based sheet row
+    for (var i = 1; i < values.length; i++) {
+      if (String(values[i][idx.id] || '').trim() === id) { rowNum = i + 1; break; }
+    }
+    if (rowNum === -1) return { ok: false, error: 'not_found' };
+
+    sheet.getRange(rowNum, idx.status + 1).setValue('RESPONDED');
+    sheet.getRange(rowNum, idx.phase + 1).setValue('RESPONDED');
+    // Record who responded + when (reuses the acknowledged* columns; there is no
+    // separate lifecycle step). Only stamp if not already set, so a re-tap is a no-op.
+    if (!String(values[rowNum - 1][idx.acknowledgedBy] || '').trim()) {
+      sheet.getRange(rowNum, idx.acknowledgedBy + 1).setValue(user.username || 'admin');
+      sheet.getRange(rowNum, idx.acknowledgedAt + 1).setValue(new Date());
+    }
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+
+  appendAudit_(user.username || 'admin', 'RESPOND', id, 'status=RESPONDED');
+  return { ok: true, data: { id: id, status: 'RESPONDED' } };
+}
+
+/**
  * Build the next sequential ID: REF-YYYYMMDD-NNN (per-day, Asia/KL, zero-padded).
  * Must be called inside the script lock. Scans the id column — cheap at this
  * volume (<50/month).

@@ -25,7 +25,10 @@ var WINDOW_MSK_MIN      = 1440;  // heart valve / skin / bone ≤ 24 h
 var SEROLOGY_RESULT_OVERDUE_MIN = 60; // result expected back ~ 1 h after blood taken
 
 // Statuses that mean a case is closed — excluded from the live cockpit.
-var CLOSED_STATUSES = { PROCURED: 1, NOT_PROCEEDED: 1, ESCALATION_EXHAUSTED: 1, SELESAI: 1 };
+// RESPONDED is the app's single close action: an admin taps "Respons & tutup" on a
+// live card when they go to attend the case (see Referrals.gs respondReferral).
+// There is no multi-step status lifecycle — a case is either open (NEW) or closed.
+var CLOSED_STATUSES = { RESPONDED: 1, PROCURED: 1, NOT_PROCEEDED: 1, ESCALATION_EXHAUSTED: 1, SELESAI: 1 };
 
 var DASHBOARD_CACHE_SECONDS = 300; // ~5 min aggregate cache (SPEC §13.5)
 
@@ -53,16 +56,19 @@ function getDashboard(payload, code) {
 
   var from = payload.from ? String(payload.from) : '';
   var to = payload.to ? String(payload.to) : '';
+  // Optional single-ward filter (one-dimensional — NOT a cross-tab; small-cell
+  // suppression still applies, so a narrow ward can't surface a single case).
+  var ward = payload.ward ? String(payload.ward) : '';
 
   // 2. Serve from cache if present (aggregate only; safe to cache).
   var cache = CacheService.getScriptCache();
-  var cacheKey = 'dash_v1_' + from + '_' + to + '_' + threshold;
+  var cacheKey = 'dash_v2_' + from + '_' + to + '_' + threshold + '_' + ward;
   var cached = cache.get(cacheKey);
   if (cached) {
     return { ok: true, data: JSON.parse(cached) };
   }
 
-  var data = computeDashboard_(from, to, threshold);
+  var data = computeDashboard_(from, to, threshold, ward);
   cache.put(cacheKey, JSON.stringify(data), DASHBOARD_CACHE_SECONDS);
   return { ok: true, data: data };
 }
@@ -71,7 +77,8 @@ function getDashboard(payload, code) {
  * Reads the Referrals sheet ONCE and computes aggregates. Returns only numbers.
  * There is deliberately no code path that copies a row into the output.
  */
-function computeDashboard_(from, to, threshold) {
+function computeDashboard_(from, to, threshold, wardFilter) {
+  wardFilter = wardFilter || '';
   var tz = 'Asia/Kuala_Lumpur';
   var now = new Date();
   var values = getSheet_('Referrals').getDataRange().getValues();
@@ -82,22 +89,29 @@ function computeDashboard_(from, to, threshold) {
 
   var monthToDate = 0, ytd = 0;
 
-  // Period accumulators (respect the from/to filter).
+  // Period accumulators (respect the from/to filter). Ward-notification data ONLY —
+  // every figure below is computable from what the ward submits, with NO later
+  // status update (DASHBOARD_PLAN §1). That is why there is no funnel /
+  // time-to-acknowledge / refusal-reason / tissue-yield here any more: those all
+  // depended on post-referral updates the team was never going to do by hand.
   var byWard = {};          // ward -> count
-  var refusal = {};         // reason -> count
   var trend = {};           // 'yyyy-MM' -> count
-  var referred = 0, acknowledged = 0, familyApproached = 0, consented = 0, procured = 0;
-  var tissue = { cornea: 0, valve: 0, bone: 0, skin: 0 };
-  var excl = { transmissible: 0, malignancy: 0, sepsis: 0, systemic: 0, proceededDespiteFlag: 0 };
-  var referToMins = [];     // death -> referral, minutes
-  var ackMins = [];         // referral -> acknowledge, minutes
+  var referred = 0;         // total referrals in range (drives range suppression)
+  var excl = { transmissible: 0, malignancy: 0, sepsis: 0, systemic: 0 };
+  var pledgeCount = 0;      // referrals arriving with a donor pledge card
+  var familyCount = 0;      // family already approached at time of referral
+  var referToMins = [];     // death -> referral, minutes (the one timing metric)
 
   for (var i = 1; i < values.length; i++) {
     var r = values[i];
     var createdAt = asDate_(r[idx.createdAt]);
     if (!createdAt) continue;
 
-    // Month/YTD reference figures are calendar-based, independent of the filter.
+    // Single-ward filter: when set, every figure below is scoped to that ward.
+    var wardVal = String(r[idx.ward] || '').trim();
+    if (wardFilter && wardVal !== wardFilter) continue;
+
+    // Month/YTD reference figures are calendar-based, independent of the date filter.
     if (Utilities.formatDate(createdAt, tz, 'yyyy-MM') === currentMonth) monthToDate++;
     if (Utilities.formatDate(createdAt, tz, 'yyyy') === currentYear) ytd++;
 
@@ -110,49 +124,28 @@ function computeDashboard_(from, to, threshold) {
     trend[Utilities.formatDate(createdAt, tz, 'yyyy-MM')] =
       (trend[Utilities.formatDate(createdAt, tz, 'yyyy-MM')] || 0) + 1;
 
-    var ward = String(r[idx.ward] || '').trim();
-    if (ward) byWard[ward] = (byWard[ward] || 0) + 1;
+    if (wardVal) byWard[wardVal] = (byWard[wardVal] || 0) + 1;
 
-    // Time death -> referral.
+    // Time death -> referral (both timestamps come from the ward submission).
     var tod = asDate_(r[idx.timeOfDeath]);
     if (tod) referToMins.push(minutesBetween_(createdAt, tod));
 
-    // Funnel.
-    var ackAt = asDate_(r[idx.acknowledgedAt]);
-    if (ackAt) { acknowledged++; ackMins.push(minutesBetween_(ackAt, createdAt)); }
-    if (asDate_(r[idx.familyApproachedAt]) || isAffirmative_(r[idx.familyApproached])) familyApproached++;
-    if (asDate_(r[idx.consentedAt])) consented++;
-    var status = String(r[idx.status] || '');
-    if (status === 'PROCURED') procured++;
+    // Submission-time signals — captured on the form, no later update needed.
+    if (isAffirmative_(r[idx.pledgerCard])) pledgeCount++;
+    if (isAffirmative_(r[idx.familyApproached])) familyCount++;
 
-    // Refusal reasons — hospital-wide, one dimension only (never ward × reason).
-    var reason = String(r[idx.refusalReason] || '').trim();
-    if (reason) refusal[reason] = (refusal[reason] || 0) + 1;
-
-    // Tissue yield.
-    if (isAffirmative_(r[idx.tissueCornea])) tissue.cornea++;
-    if (isAffirmative_(r[idx.tissueValve])) tissue.valve++;
-    if (isAffirmative_(r[idx.tissueBone])) tissue.bone++;
-    if (isAffirmative_(r[idx.tissueSkin])) tissue.skin++;
-
-    // Exclusion-flag patterns.
-    var t = isAffirmative_(r[idx.exclTransmissible]);
-    var m = isAffirmative_(r[idx.exclMalignancy]);
-    var s = isAffirmative_(r[idx.exclSepsis]);
-    var y = isAffirmative_(r[idx.exclSystemic]);
-    if (t) excl.transmissible++;
-    if (m) excl.malignancy++;
-    if (s) excl.sepsis++;
-    if (y) excl.systemic++;
-    if ((t || m || s || y) && status === 'PROCURED') excl.proceededDespiteFlag++;
+    // Exclusion-flag patterns — how often each of the 4 criteria is flagged.
+    if (isAffirmative_(r[idx.exclTransmissible])) excl.transmissible++;
+    if (isAffirmative_(r[idx.exclMalignancy])) excl.malignancy++;
+    if (isAffirmative_(r[idx.exclSepsis])) excl.sepsis++;
+    if (isAffirmative_(r[idx.exclSystemic])) excl.systemic++;
   }
 
   // ---- Small-cell suppression (CLAUDE.md rule 6; DASHBOARD_PLAN §7) ----
   // EVERY count < threshold is suppressed, not just the categorical breakdowns.
-  // The dashboard is date-range filterable, so volume / funnel / medians are NOT
-  // safe "top-line" figures: a narrow filter can shrink them to a single case
-  // (funnel.referred:1 … procured:1, or a median over one row = that row's exact
-  // timing). Two layers:
+  // The dashboard is date-range filterable, so volume / medians are NOT safe
+  // "top-line" figures: a narrow filter can shrink them to a single case (a
+  // median over one row = that row's exact timing). Two layers:
   //   1. Range guard: if the whole filtered range holds 1..threshold-1 referrals,
   //      every range-scoped figure is single-case territory -> suppress them all.
   //   2. Cell guard: otherwise, suppress any individual count < threshold, and any
@@ -170,43 +163,31 @@ function computeDashboard_(from, to, threshold) {
     })
   };
 
-  var funnelOut, refMed, ackMed, byWardOut, refusalOut, tissueOut, exclOut;
+  var refMed, byWardOut, exclOut, pledgeOut, familyOut;
   if (rangeSuppressed) {
-    funnelOut = { referred: null, acknowledged: null, familyApproached: null, consented: null, procured: null };
-    refMed = null; ackMed = null;
-    byWardOut = []; refusalOut = [];
-    tissueOut = { cornea: null, valve: null, bone: null, skin: null };
-    exclOut = { transmissible: null, malignancy: null, sepsis: null, systemic: null, proceededDespiteFlag: null };
+    refMed = null;
+    byWardOut = [];
+    exclOut = { transmissible: null, malignancy: null, sepsis: null, systemic: null };
+    pledgeOut = null; familyOut = null;
   } else {
-    funnelOut = {
-      referred: sc(referred), acknowledged: sc(acknowledged),
-      familyApproached: sc(familyApproached), consented: sc(consented), procured: sc(procured)
-    };
     // A median over fewer than `threshold` values re-exposes an individual's timing.
     refMed = referToMins.length < threshold ? null : median_(referToMins);
-    ackMed = ackMins.length < threshold ? null : median_(ackMins);
     byWardOut = countMapToArray_(byWard, 'ward', threshold, true);
-    refusalOut = countMapToArray_(refusal, 'reason', threshold, true);
-    tissueOut = {
-      cornea: sc(tissue.cornea), valve: sc(tissue.valve),
-      bone: sc(tissue.bone), skin: sc(tissue.skin)
-    };
     exclOut = {
       transmissible: sc(excl.transmissible), malignancy: sc(excl.malignancy),
-      sepsis: sc(excl.sepsis), systemic: sc(excl.systemic),
-      proceededDespiteFlag: sc(excl.proceededDespiteFlag)
+      sepsis: sc(excl.sepsis), systemic: sc(excl.systemic)
     };
+    pledgeOut = sc(pledgeCount);
+    familyOut = sc(familyCount);
   }
 
   return {
     volume: volumeOut,
     byWard: byWardOut,
     timeToReferMedianMin: refMed,
-    timeToAckMedianMin: ackMed,
-    funnel: funnelOut,
-    refusalReasons: refusalOut,
-    tissueYield: tissueOut,
     exclusionFlags: exclOut,
+    pledgeCardCount: pledgeOut,
+    familyApproachedCount: familyOut,
     meta: {
       smallCellThreshold: threshold,
       rangeSuppressed: rangeSuppressed,
@@ -275,17 +256,6 @@ function getLiveCases(token) {
           minutesBetween_(now, bloodTaken) > SEROLOGY_RESULT_OVERDUE_MIN,
         unackEscalated: status === 'NEW' && createdAt !== null &&
           minutesBetween_(now, createdAt) > escalationMinutes
-      },
-      // C4 coordination readiness (DASHBOARD_PLAN §2.C4). Read-only status of the
-      // DCD-checklist alert steps; toggling them needs the Phase 2 updateReferral
-      // write endpoint (not yet built).
-      coordination: {
-        ophthal: isAffirmative_(r[idx.teamAlertedOphthal]),
-        ortho: isAffirmative_(r[idx.teamAlertedOrtho]),
-        plastic: isAffirmative_(r[idx.teamAlertedPlastic]),
-        ijn: isAffirmative_(r[idx.teamAlertedIJN]),
-        ot: isAffirmative_(r[idx.otAlerted]),
-        forensics: isAffirmative_(r[idx.forensicsAlerted])
       },
       status: status,
       acknowledgedBy: String(r[idx.acknowledgedBy] || ''),

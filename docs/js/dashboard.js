@@ -25,30 +25,6 @@
 
   // ---- Palette (concrete colours; Chart.js can't read CSS vars) ----
   var GREEN = '#1B7A43', GREEN_DARK = '#145c33', GREEN_LIGHT = '#8fc7a6';
-  var CAT_COLORS = [
-    '#1B7A43', '#2f9e60', '#57b37e', '#cc7a00', '#c0392b',
-    '#7a5195', '#3f7cac', '#bc5090', '#8a8d3b', '#5b6b62'
-  ];
-
-  // Death Audit Form refusal categories -> Bahasa Melayu display labels
-  // (SPEC §6.5). Matching is case-insensitive; unknown reasons show verbatim.
-  var REFUSAL_LABELS = {
-    'family did not accept death': 'Keluarga tidak menerima kematian',
-    'religious beliefs': 'Kepercayaan agama',
-    "deceased's wishes unknown": 'Hasrat si mati tidak diketahui',
-    'differing family opinion': 'Perbezaan pendapat keluarga',
-    'concern about mutilation': 'Bimbang kecacatan jenazah',
-    'funeral delay': 'Kelewatan pengebumian',
-    'did not want deceased to suffer more': 'Tidak mahu si mati menderita lagi',
-    '3rd party intervention': 'Campur tangan pihak ketiga',
-    'not stated': 'Tidak dinyatakan',
-    'others': 'Lain-lain'
-  };
-  function refusalLabel(r) {
-    var k = String(r || '').trim().toLowerCase();
-    return REFUSAL_LABELS[k] || String(r || '').trim() || 'Tidak dinyatakan';
-  }
-
   // ---- DOM refs ----
   var gate = document.getElementById('gate');
   var gateInput = document.getElementById('dashCode');
@@ -58,6 +34,10 @@
   var cdnWarn = document.getElementById('cdnWarn');
   var fMonth = document.getElementById('fMonth');
   var fScope = document.getElementById('fScope');
+  var fYear = document.getElementById('fYear');
+  var fWard = document.getElementById('fWard');
+  var fMonthField = document.getElementById('fMonthField');
+  var fYearField = document.getElementById('fYearField');
   var fApply = document.getElementById('fApply');
   var asOf = document.getElementById('asOf');
 
@@ -94,19 +74,28 @@
 
   function currentRange() {
     var scope = fScope.value;
-    if (scope === 'all') return { from: '', to: '' };
-    var now = new Date();
-    if (scope === 'ytd') {
-      var y = now.getFullYear();
-      return { from: y + '-01-01', to: y + '-' + pad2(now.getMonth() + 1) + '-' + pad2(now.getDate()) };
+    var ward = fWard ? fWard.value : '';
+    if (scope === 'all') return { from: '', to: '', ward: ward };
+    if (scope === 'year') {
+      var yr = (fYear && fYear.value) || String(new Date().getFullYear());
+      return { from: yr + '-01-01', to: yr + '-12-31', ward: ward };
     }
     // month (default): use the month picker, or current month if empty
+    var now = new Date();
     var ym = fMonth.value || (now.getFullYear() + '-' + pad2(now.getMonth() + 1));
     var parts = ym.split('-');
     var yy = parseInt(parts[0], 10), mm = parseInt(parts[1], 10);
     var lastDay = new Date(yy, mm, 0).getDate();
-    return { from: ym + '-01', to: ym + '-' + pad2(lastDay) };
+    return { from: ym + '-01', to: ym + '-' + pad2(lastDay), ward: ward };
   }
+
+  // Show only the field relevant to the chosen scope (month picker vs year list).
+  function updateScopeFields() {
+    var scope = fScope.value;
+    if (fMonthField) fMonthField.style.display = (scope === 'month') ? '' : 'none';
+    if (fYearField) fYearField.style.display = (scope === 'year') ? '' : 'none';
+  }
+  fScope.addEventListener('change', updateScopeFields);
 
   fApply.addEventListener('click', function () {
     if (!currentCode) return;
@@ -125,6 +114,7 @@
     var payload = {};
     if (range.from) payload.from = range.from;
     if (range.to) payload.to = range.to;
+    if (range.ward) payload.ward = range.ward;
     return apiPost('getDashboard', payload, { code: code }).then(function (res) {
       if (!res || res.ok !== true) {
         var e = new Error((res && res.error) || 'unknown_error');
@@ -155,12 +145,14 @@
       asOf.textContent = 'Sehingga ' + formatStamp(data.meta.cachedAt);
     }
 
-    // KPIs. A suppressed count comes back null -> show "<5" (0 stays 0).
+    // KPIs — all from ward-submission data. A suppressed count comes back null
+    // -> show "<5" (0 stays 0).
     var v = data.volume || {};
     setText('kpiMonth', v.monthToDate == null ? '<5' : v.monthToDate);
     setText('kpiYtd', v.ytd == null ? '<5' : v.ytd);
     setHtml('kpiRefer', minutesTile(data.timeToReferMedianMin));
-    setHtml('kpiAck', minutesTile(data.timeToAckMedianMin));
+    setText('kpiPledge', data.pledgeCardCount == null ? '<5' : data.pledgeCardCount);
+    setText('kpiFamily', data.familyApproachedCount == null ? '<5' : data.familyApproachedCount);
 
     // Range guard: when the whole filtered range is 1..threshold-1 referrals the
     // server suppresses every range-scoped figure. Show one notice instead of a
@@ -173,9 +165,7 @@
     if (rs) return; // nothing range-scoped to draw
 
     renderWard(data.byWard || []);
-    renderFunnel(data.funnel || {});
-    renderRefusal(data.refusalReasons || []);
-    renderTissue(data.tissueYield || {});
+    renderExcl(data.exclusionFlags || {});
   }
 
   function minutesTile(mins) {
@@ -205,88 +195,27 @@
     drawBar('chartWard', labels, values, GREEN, 'Rujukan');
   }
 
-  // ---- Conversion funnel (horizontal bar) ----
-  function renderFunnel(f) {
-    var stages = [
-      ['Dirujuk', f.referred], ['Diakui', f.acknowledged],
-      ['Keluarga didekati', f.familyApproached], ['Setuju', f.consented],
-      ['Diperoleh', f.procured]
-    ];
-    var labels = stages.map(function (s) { return s[0]; });
-    // A suppressed stage (<5) arrives as null; draw it as 0 so no small count is
-    // shown, and say so — a 0 here may mean "<5 disekat", not a true zero.
-    var anySuppressed = stages.some(function (s) { return s[1] === null; });
-    var values = stages.map(function (s) { return s[1] == null ? 0 : s[1]; });
-    setText('funnelNote', anySuppressed ? 'Peringkat dengan <5 kes disekat (dipapar sebagai 0).' : '');
-
-    if (!hasChart) {
-      return fallbackTable('chartFunnel', ['Peringkat', 'Bilangan'],
-        stages.map(function (s) { return [s[0], s[1] == null ? 0 : s[1]]; }));
-    }
-    if (charts.chartFunnel) charts.chartFunnel.destroy();
-    var ctx = freshCanvas('chartFunnel');
-    charts.chartFunnel = new window.Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Bilangan', data: values,
-          backgroundColor: labels.map(function (_, i) { return shade(i, labels.length); }),
-          borderRadius: 6
-        }]
-      },
-      options: baseOptions({ indexAxis: 'y' })
-    });
-  }
-
-  // ---- Refusal reasons (doughnut) ----
-  function renderRefusal(reasons) {
-    var shown = reasons.filter(function (r) { return r.count !== null && r.count !== undefined && r.count > 0; });
-    var suppressed = reasons.length - shown.length;
-
-    setText('refusalNote', suppressed > 0
-      ? suppressed + ' kategori lain disekat (<5).'
-      : (shown.length ? '' : 'Tiada data keengganan bagi julat ini.'));
-
-    var labels = shown.map(function (r) { return refusalLabel(r.reason); });
-    var values = shown.map(function (r) { return r.count; });
-
-    if (!hasChart) {
-      return fallbackTable('chartRefusal', ['Sebab', 'Bilangan'],
-        shown.map(function (r) { return [refusalLabel(r.reason), r.count]; }));
-    }
-    if (charts.chartRefusal) charts.chartRefusal.destroy();
-    var ctx = freshCanvas('chartRefusal');
-    charts.chartRefusal = new window.Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: labels,
-        datasets: [{ data: values, backgroundColor: CAT_COLORS.slice(0, labels.length), borderWidth: 0 }]
-      },
-      options: baseOptions({
-        cutout: '58%',
-        plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
-      })
-    });
-  }
-
-  // ---- Tissue yield (bar) ----
-  function renderTissue(t) {
+  // ---- Exclusion-flag patterns (bar) ----
+  // How often each of the 4 criteria was flagged on the referral form. A flag is
+  // never a rejection — the final call is always the TOP team's (SPEC §6.1).
+  function renderExcl(x) {
     var rows = [
-      ['Kornea', t.cornea], ['Injap jantung', t.valve],
-      ['Tulang', t.bone], ['Kulit', t.skin]
+      ['Berjangkit', x.transmissible], ['Malignansi', x.malignancy],
+      ['Sepsis', x.sepsis], ['Sistemik', x.systemic]
     ];
     var anySuppressed = rows.some(function (r) { return r[1] === null; });
-    setText('tissueNote', anySuppressed ? 'Nilai <5 disekat (dipapar sebagai “<5”).' : '');
+    setText('exclNote', anySuppressed
+      ? 'Nilai <5 disekat (dipapar sebagai 0). Bendera hanya menanda — bukan penolakan.'
+      : 'Bendera hanya menanda kes — keputusan akhir sentiasa pasukan TOP.');
 
     var labels = rows.map(function (r) { return r[0]; });
     var values = rows.map(function (r) { return r[1] == null ? 0 : r[1]; });
 
     if (!hasChart) {
-      return fallbackTable('chartTissue', ['Tisu', 'Bilangan'],
+      return fallbackTable('chartExcl', ['Kriteria', 'Ditanda'],
         rows.map(function (r) { return [r[0], num(r[1])]; }));
     }
-    drawBar('chartTissue', labels, values, GREEN_DARK, 'Diperoleh');
+    drawBar('chartExcl', labels, values, GREEN, 'Ditanda');
   }
 
   // ---- Chart helpers ----
@@ -310,12 +239,6 @@
         scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
       })
     });
-  }
-
-  function shade(i, n) {
-    // green gradient across the funnel stages
-    var stops = [GREEN, '#2f9e60', GREEN_LIGHT, '#b7dcc6', '#d7ecdf'];
-    return stops[Math.min(i, stops.length - 1)];
   }
 
   // Replace a <canvas> with a fresh one (Chart needs a clean context on re-render).
@@ -361,9 +284,28 @@
     }
   }
 
-  // Default the month picker to the current month.
-  (function initMonth() {
-    var now = new Date();
-    fMonth.value = now.getFullYear() + '-' + pad2(now.getMonth() + 1);
+  // Default the month picker to the current month; populate the year + ward lists.
+  (function initFilters() {
+    var now = new Date(), y = now.getFullYear();
+    fMonth.value = y + '-' + pad2(now.getMonth() + 1);
+
+    if (fYear) {
+      var yopts = '';
+      for (var yr = y; yr >= y - 4; yr--) yopts += '<option value="' + yr + '">' + yr + '</option>';
+      fYear.innerHTML = yopts;
+    }
+
+    // Ward list mirrors the referral form (config.js WARD_GROUPS), grouped by facility.
+    if (fWard && typeof WARD_GROUPS !== 'undefined') {
+      var html = '<option value="">Semua wad</option>';
+      WARD_GROUPS.forEach(function (g) {
+        html += '<optgroup label="' + esc(g.label) + '">';
+        g.wards.forEach(function (w) { html += '<option value="' + esc(w) + '">' + esc(w) + '</option>'; });
+        html += '</optgroup>';
+      });
+      fWard.innerHTML = html;
+    }
+
+    updateScopeFields();
   })();
 })();

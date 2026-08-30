@@ -65,6 +65,12 @@ function doPost(e) {
         result = exportCsv(payload, token);
         break;
 
+      // ---- Admin write: close a live case (Referrals.gs) — token-gated, audited.
+      // The app's single status write: an admin taps "Respons & tutup" on a card.
+      case 'respondReferral':
+        result = respondReferral(payload, token);
+        break;
+
       // ---- Later phases: stubbed, signatures visible ----
       case 'getEducation':      // Phase 3
       case 'getConfigPublic':   // Phase 3 (must never leak codes)

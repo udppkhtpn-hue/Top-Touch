@@ -6,12 +6,12 @@
   <!-- Admin-only operations tool; never index (SPEC §6.4). robots.txt also disallows the whole site. -->
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#1B7A43">
-  <title>Kokpit Operasi — T.O.P. Touch</title>
-  <meta name="description" content="Kokpit operasi langsung TOP Team HTPN — kes aktif, kiraan detik tetingkap tisu, isyarat pengecualian. Akses admin sahaja.">
+  <title>Pusat Operasi — T.O.P. Touch</title>
+  <meta name="description" content="Pusat operasi langsung TOP Team HTPN — kes aktif, kiraan detik tetingkap tisu, isyarat pengecualian. Akses admin sahaja.">
   <link rel="stylesheet" href="css/style.css">
 
   <style>
-    /* ---- Kokpit Operasi — page-scoped styles (kept out of the shared critical CSS) ---- */
+    /* ---- Pusat Operasi — page-scoped styles (kept out of the shared critical CSS) ---- */
     .ck-wrap { max-width: var(--maxw-wide); }
 
     /* ---- Login gate ---- */
@@ -68,13 +68,9 @@
     .exc-card.is-warn { border-left-color: var(--amber); }
     .exc-card.is-warn .exc-n { color: var(--amber); }
 
-    /* ---- View toggle ---- */
+    /* ---- Toolbar (section label + active-case count) ---- */
     .ck-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
-    .view-toggle { display: inline-flex; background: var(--surface); border: 1px solid var(--line);
-      border-radius: 999px; padding: 3px; }
-    .view-toggle button { border: 0; background: transparent; font: inherit; font-weight: 600;
-      color: var(--muted); padding: 8px 16px; border-radius: 999px; cursor: pointer; min-height: 40px; }
-    .view-toggle button[aria-pressed="true"] { background: var(--green); color: #fff; }
+    .ck-view-label { font-weight: 700; font-size: .98rem; }
     .ck-count { margin-left: auto; font-size: .82rem; color: var(--muted); }
 
     /* ---- Case card (shared by both views) ---- */
@@ -118,31 +114,26 @@
     .badge-hot { background: #fdecea; color: #7a1c12; border-color: #f5c6c0; }
     .badge-warn { background: #fff6e6; color: #7a4a00; border-color: #f0d9ac; }
 
-    /* Coordination readiness (C4 per-case) */
-    .coord { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
-    .coord-lbl { font-size: .74rem; font-weight: 700; color: var(--muted); text-transform: uppercase;
-      letter-spacing: .06em; margin-bottom: 6px; }
-    .coord-list { display: flex; flex-wrap: wrap; gap: 6px; }
-    .coord-item { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem;
-      padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
-    .coord-item.done { background: var(--green-light); color: var(--green-darker); border-color: #bfe0cc; }
-    .coord-item .tick { font-weight: 800; }
-    .coord-note { font-size: .72rem; color: var(--muted); margin-top: 6px; }
+    /* Patient identity strip (built only from patientName + icNo) */
+    .case-idbits { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 4px 0 2px;
+      font-size: .86rem; color: var(--ink); }
+    .case-idbits .pb-name { font-weight: 700; }
+    .case-idbits .pb { font-variant-numeric: tabular-nums; }
+    .case-idbits .pb-id { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+      color: var(--muted); letter-spacing: .02em; }
+    .case-idbits .pb-sep { color: var(--line); }
 
     /* Urgency list layout */
     .case-list { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 
-    /* Pipeline board layout */
-    .board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(240px, 1fr);
-      gap: 12px; overflow-x: auto; padding-bottom: 8px; }
-    .board-col { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-      padding: 10px; min-height: 80px; }
-    .board-col h3 { font-size: .82rem; margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
-    .board-col h3 .col-n { background: var(--white); border: 1px solid var(--line); border-radius: 999px;
-      font-size: .72rem; padding: 1px 8px; color: var(--muted); }
-    .board-col .case-card { margin-bottom: 10px; padding: 12px; }
-    .board-col .case-card:last-child { margin-bottom: 0; }
-    .board-empty { color: var(--muted); font-size: .8rem; padding: 6px 2px; }
+    /* Respond & close action — the app's single status write */
+    .case-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
+    .btn-respond { font: inherit; font-weight: 700; font-size: .85rem; cursor: pointer;
+      background: var(--green); color: #fff; border: 0; border-radius: var(--radius-sm);
+      padding: 9px 16px; min-height: 40px; }
+    .btn-respond:hover { background: var(--green-dark); }
+    .btn-respond:disabled { opacity: .6; cursor: default; }
+    .btn-respond:focus-visible { outline: 2px solid var(--green-darker); outline-offset: 2px; }
 
     .ck-empty { text-align: center; color: var(--muted); padding: 48px 0; }
 
@@ -203,8 +194,8 @@
 
         <!-- LOGIN GATE (admin username + PIN -> session token) -->
         <form class="gate" id="gate" autocomplete="off">
-          <h2>Kokpit Operasi</h2>
-          <p>Log masuk admin. Kokpit ini memaparkan maklumat kes penuh — setiap paparan direkod dalam log audit.</p>
+          <h2>Pusat Operasi</h2>
+          <p>Log masuk admin. Pusat ini memaparkan maklumat kes penuh — setiap paparan direkod dalam log audit.</p>
           <label for="uName">Nama pengguna</label>
           <input type="text" id="uName" name="uName" autocomplete="username"
                  autocapitalize="none" spellcheck="false" required>
@@ -218,7 +209,7 @@
         <!-- COCKPIT (revealed after login) -->
         <div id="cockpit" class="ck-hidden">
           <div class="ck-head">
-            <h1>Kokpit Operasi Langsung</h1>
+            <h1>Pusat Operasi Langsung</h1>
             <span class="ck-live" id="liveInd" title="Kemas kini automatik">
               <span class="ck-dot"></span><span id="liveTxt">Langsung</span>
             </span>
@@ -239,24 +230,15 @@
           <!-- Exceptions strip (C3) -->
           <div class="exc-strip" id="excStrip" aria-live="polite"></div>
 
-          <!-- View toggle + count -->
+          <!-- Active cases — urgency countdowns -->
           <div class="ck-toolbar">
-            <div class="view-toggle" role="group" aria-label="Tukar paparan">
-              <button type="button" id="viewUrgency" aria-pressed="true">Keutamaan</button>
-              <button type="button" id="viewBoard" aria-pressed="false">Papan Aliran</button>
-            </div>
+            <span class="ck-view-label">Keutamaan — kritikal dahulu</span>
             <span class="ck-count" id="ckCount"></span>
           </div>
 
-          <!-- Urgency (countdown) view -->
           <div id="paneUrgency">
             <div class="case-list" id="caseList"></div>
             <div class="ck-empty ck-hidden" id="emptyUrgency">Tiada kes aktif buat masa ini.</div>
-          </div>
-
-          <!-- Pipeline board view -->
-          <div id="paneBoard" class="ck-hidden">
-            <div class="board" id="board"></div>
           </div>
 
           <!-- NTRC CSV export (admin-tier, token-gated, audited) -->
@@ -272,11 +254,8 @@
                 <label>Status
                   <select id="expStatus">
                     <option value="">Semua</option>
-                    <option value="NEW">NEW</option>
-                    <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
-                    <option value="IN_PROGRESS">IN_PROGRESS</option>
-                    <option value="PROCURED">PROCURED</option>
-                    <option value="NOT_PROCEEDED">NOT_PROCEEDED</option>
+                    <option value="NEW">NEW (belum direspons)</option>
+                    <option value="RESPONDED">RESPONDED (telah ditutup)</option>
                   </select>
                 </label>
                 <button type="button" class="btn btn-primary btn-sm" id="btnExport">Muat turun CSV</button>
@@ -297,7 +276,7 @@
     <footer class="site-footer">
       <div class="container">
         T.O.P. Touch (Sentuhan Keikhlasan) · Tissue &amp; Organ Procurement (TOP) Team, HTPN<br>
-        Kokpit operasi — akses admin sahaja.
+        Pusat operasi — akses admin sahaja.
       </div>
     </footer>
   </main>

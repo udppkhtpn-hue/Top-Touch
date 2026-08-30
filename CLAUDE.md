@@ -61,14 +61,16 @@ Live: [https://udppkhtpn-hue.github.io/Top-Touch/](https://udppkhtpn-hue.github.
 
 ## Data model (Google Sheets — SPEC §7)
 
-- **Referrals** — one row per referral. Status: `NEW / ACKNOWLEDGED / IN_PROGRESS / PROCURED / NOT_PROCEEDED`. (Dashboard adds columns — see DASHBOARD\_PLAN.md §3.)  
+- **Referrals** — one row per referral. Status is now just **`NEW` (open) → `RESPONDED` (closed)**: there is no multi-step lifecycle. The ward creates a case `NEW`; an admin taps "Respons & tutup" in the cockpit, which sets `status = RESPONDED` (the app's single status write, `respondReferral`, token-gated + audited) and drops it off the live board. No one hand-edits the Sheet to advance status. (Legacy closed statuses `PROCURED / NOT_PROCEEDED / SELESAI` still count as closed if present.)  
 - **Users** — admins/roster: username, pinHash (SHA-256 \+ per-user salt), role, oncall, chat/contact, sessionToken, tokenExpiry.  
 - **Education**, **AuditLog**, **Config**.  
 - **Config keys (README):** `wardList`, `escalationMinutes`, `maxEscalations`, `adminUrl`, `dashboardCode`, `wardCode`/`wardCodeEnabled`, `chatWebhookUrl`, `alertEmails`, `alertProvider`. `getConfigPublic` must never leak `dashboardCode`, `wardCode`, `chatWebhookUrl`, or `alertEmails`.
 
 ## API (Apps Script) — SPEC v2.0 §8
 
-`POST` JSON `{ action, token?, code?, payload }` → `{ ok, data }` | `{ ok:false, error }`. Actions: `submitReferral` (open, \+wardCode if enabled), `getEducation`, `getConfigPublic`, `getDashboardPublic` (dashboardCode), `login`, `listReferrals` (token), `updateReferral` (token), `getDashboardAdmin` (token), `exportCsv` (token), `manageEducation` (token), `manageUsers` (token).
+`POST` JSON `{ action, token?, code?, payload }` → `{ ok, data }` | `{ ok:false, error }`. Actions: `submitReferral` (open, \+wardCode if enabled), `getDashboardPublic`/`getDashboard` (dashboardCode — aggregate, **ward-notification data only**: volume, by-ward, death→referral median, exclusion-flag counts, pledge-card & family-approached counts; no funnel / ack-time / refusal / tissue-yield), `login`/`logout`, `getDashboardAdmin`/`getLiveCases` (token — live cockpit), `respondReferral` (token — close a case), `exportCsv` (token). Stubbed/not built: `getEducation`, `getConfigPublic`, `listReferrals`, `updateReferral`, `manageEducation`, `manageUsers`.
+
+The admin cockpit UI is **"Pusat Operasi"** (formerly "Kokpit Operasi"). It shows the on-call bar, an exceptions strip, and the live window countdowns; each card has a "Respons & tutup" close button. No status/phase board (retired).
 
 ## UI / motion
 

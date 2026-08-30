@@ -125,7 +125,7 @@
         <div id="dashboard" class="dash-hidden">
           <div class="dash-intro">
             <h1>Statistik Rujukan</h1>
-            <p class="lede">Agregat sahaja · nilai kecil disekat atas sebab privasi.</p>
+            <p class="lede">Agregat daripada notifikasi wad · nilai kecil disekat atas sebab privasi.</p>
           </div>
 
           <div class="cdn-warn dash-hidden" id="cdnWarn">
@@ -135,16 +135,24 @@
 
           <div class="dash-filter">
             <div class="f-field">
-              <label for="fMonth">Bulan</label>
-              <input type="month" id="fMonth">
-            </div>
-            <div class="f-field">
               <label for="fScope">Julat</label>
               <select id="fScope">
                 <option value="month">Bulan dipilih</option>
-                <option value="ytd">Sepanjang tahun ini</option>
+                <option value="year">Tahun dipilih</option>
                 <option value="all">Sepanjang masa</option>
               </select>
+            </div>
+            <div class="f-field" id="fMonthField">
+              <label for="fMonth">Bulan</label>
+              <input type="month" id="fMonth">
+            </div>
+            <div class="f-field" id="fYearField">
+              <label for="fYear">Tahun</label>
+              <select id="fYear"></select>
+            </div>
+            <div class="f-field">
+              <label for="fWard">Wad / Lokasi</label>
+              <select id="fWard"><option value="">Semua wad</option></select>
             </div>
             <button type="button" class="btn btn-ghost" id="fApply">Papar</button>
             <span class="dash-asof" id="asOf"></span>
@@ -155,7 +163,8 @@
             <div class="kpi"><div class="k-val" id="kpiMonth">—</div><div class="k-lbl">Rujukan bulan ini</div></div>
             <div class="kpi"><div class="k-val" id="kpiYtd">—</div><div class="k-lbl">Terkumpul tahun ini (YTD)</div></div>
             <div class="kpi"><div class="k-val" id="kpiRefer">—</div><div class="k-lbl">Median kematian → rujukan</div></div>
-            <div class="kpi"><div class="k-val" id="kpiAck">—</div><div class="k-lbl">Median masa untuk akui</div></div>
+            <div class="kpi"><div class="k-val" id="kpiPledge">—</div><div class="k-lbl">Ada kad ikrar penderma</div></div>
+            <div class="kpi"><div class="k-val" id="kpiFamily">—</div><div class="k-lbl">Keluarga telah didekati</div></div>
           </div>
 
           <!-- Range too small to show detail without risking re-identification. -->
@@ -174,24 +183,10 @@
             </div>
 
             <div class="chart-card">
-              <h3>Corong penukaran</h3>
-              <p class="c-sub">Dirujuk → Diakui → Keluarga didekati → Setuju → Diperoleh.</p>
-              <div class="chart-box" id="chartFunnelBox"><canvas id="chartFunnel"></canvas></div>
-              <div class="chart-note" id="funnelNote"></div>
-            </div>
-
-            <div class="chart-card">
-              <h3>Sebab keengganan</h3>
-              <p class="c-sub">Seluruh hospital (kategori Borang Audit Kematian).</p>
-              <div class="chart-box" id="chartRefusalBox"><canvas id="chartRefusal"></canvas></div>
-              <div class="chart-note" id="refusalNote"></div>
-            </div>
-
-            <div class="chart-card">
-              <h3>Hasil tisu</h3>
-              <p class="c-sub">Bilangan tisu diperoleh bagi julat dipilih.</p>
-              <div class="chart-box" id="chartTissueBox"><canvas id="chartTissue"></canvas></div>
-              <div class="chart-note" id="tissueNote"></div>
+              <h3>Corak bendera pengecualian</h3>
+              <p class="c-sub">Berapa kerap setiap kriteria ditanda semasa rujukan.</p>
+              <div class="chart-box" id="chartExclBox"><canvas id="chartExcl"></canvas></div>
+              <div class="chart-note" id="exclNote"></div>
             </div>
           </div>
 
