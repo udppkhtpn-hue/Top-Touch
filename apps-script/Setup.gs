@@ -96,7 +96,9 @@ var DEFAULT_CONFIG = [
   ['smallCellThreshold', '5'],                     // dashboard: suppress any count below this (privacy)
   ['wardCode',          ''],                       // set a code only if wardCodeEnabled = true
   ['wardCodeEnabled',   'false'],                  // off by default
-  ['chatWebhookUrl',    ''],                        // Google Chat space incoming-webhook URL (blank = channel off)
+  ['chatWebhookUrl',    ''],                        // Google Chat space incoming-webhook URL (blank = channel off; org may disable webhooks)
+  ['telegramBotToken',  ''],                        // Telegram bot token from @BotFather (blank = Telegram channel off)
+  ['telegramChatId',    ''],                        // Telegram group/chat id that receives the identifier-light nudge
   ['alertEmails',       ''],                          // set this in the Config sheet (kept out of the public repo)
   ['alertProvider',     'email']                    // Phase 1a baseline channel
 ];

@@ -37,6 +37,9 @@ function sendAlert(referral) {
   try { results.chat = sendChat(referral, config); }
   catch (e) { results.chat = false; logAlertError_('chat', referral.id, e); }
 
+  try { results.telegram = sendTelegram(referral, config); }
+  catch (e) { results.telegram = false; logAlertError_('telegram', referral.id, e); }
+
   Logger.log('sendAlert(' + referral.id + ') results: ' + JSON.stringify(results));
   return results;
 }
@@ -83,8 +86,63 @@ function sendChat(referral, config) {
 }
 
 // ---------------------------------------------------------------------------
+// Channel: Telegram bot (identifier-light nudge) — LIVE when configured.
+// IMPORTANT: Telegram is a non-MOH third party (same category as the dropped
+// WhatsApp). To keep patient data out of it, this message is DELIBERATELY
+// identifier-light: NO patient name, NO IC, NO time of death — only ward, bed,
+// the referring staff + contact, the referral ID, and a link to open the app.
+// Full detail stays in-Workspace (email) and in the Sheet. Inert until BOTH
+// telegramBotToken and telegramChatId are set in Config. Same signature as the
+// other channels, so it is individually swappable.
+// ---------------------------------------------------------------------------
+function sendTelegram(referral, config) {
+  var token = String(config.telegramBotToken || '').trim();
+  var chatId = String(config.telegramChatId || '').trim();
+  if (!token || !chatId) {
+    Logger.log('sendTelegram: not configured (telegramBotToken/telegramChatId) — channel off.');
+    return false;
+  }
+
+  var res = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({
+      chat_id: chatId,
+      text: buildTelegramNudge_(referral, config),
+      disable_web_page_preview: true
+    }),
+    muteHttpExceptions: true // inspect the code ourselves instead of throwing raw
+  });
+
+  var httpCode = res.getResponseCode();
+  if (httpCode >= 200 && httpCode < 300) return true;
+  throw new Error('telegram_http_' + httpCode + ': ' + res.getContentText());
+}
+
+/**
+ * Identifier-light Telegram text: ward + bed + referring staff/contact + referral
+ * ID + a tap-through link. NO patient name / IC / time-of-death ever — that is the
+ * whole point of routing this (and only this) through a third party.
+ */
+function buildTelegramNudge_(referral, config) {
+  var prefix = referral.isEscalation ? '⚠️ BELUM DIAKUI — ' : '';
+  var appUrl = String(config.adminUrl || '').trim();
+  var lines = [
+    prefix + '🚨 RUJUKAN PENDERMA BERPOTENSI',
+    'Wad: ' + (referral.ward || '-') + ' | Katil: ' + (referral.bed || '-'),
+    'Dirujuk oleh: ' + (referral.staffName || '-') +
+      (referral.contactExt ? ' (' + referral.contactExt + ')' : ''),
+    'ID rujukan: ' + (referral.id || '-'),
+    appUrl ? ('Buka app: ' + appUrl) : null,
+    '— T.O.P. Touch · tiada maklumat pesakit dihantar melalui Telegram'
+  ].filter(function (l) { return l !== null; });
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // Message builder — shared by email + Chat. Carries the full referral detail,
 // including patient name and IC (owner decision; internal staff-only tool).
+// (Telegram does NOT use this — it uses buildTelegramNudge_ above.)
 // ---------------------------------------------------------------------------
 function buildAlertMessage_(referral, config, isEscalation) {
   var tz = 'Asia/Kuala_Lumpur';
@@ -206,4 +264,9 @@ function testSendAlert() {
 /** Chat only — verifies the Config chatWebhookUrl posts to your Space. */
 function testSendChat() {
   Logger.log('sendChat -> ' + sendChat(sampleReferral_(), getConfigMap_()));
+}
+
+/** Telegram only — verifies the Config telegramBotToken/telegramChatId nudge posts. */
+function testSendTelegram() {
+  Logger.log('sendTelegram -> ' + sendTelegram(sampleReferral_(), getConfigMap_()));
 }

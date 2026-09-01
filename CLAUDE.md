@@ -31,9 +31,11 @@ Live: [https://udppkhtpn-hue.github.io/Top-Touch/](https://udppkhtpn-hue.github.
 
 ## Alerts (README amends SPEC §6.2)
 
-- One `sendAlert(referral)` fans out to `sendEmail()` (MailApp, baseline) and `sendChat()` (Google Chat webhook, instant push). Each channel is individually swappable, wrapped in its own try/catch, and **must never fail the submission**.  
-- **Alerts carry full detail** (name, IC, ward, bed, RN, time of death, flags, notes, contact) — deliberate, because both channels stay inside MOH Workspace.  
-- **WhatsApp was dropped** (every route runs through a non-MOH third party). Do not reintroduce it without a governance decision.
+- One `sendAlert(referral)` fans out to `sendEmail()` (MailApp, baseline), `sendChat()` (Google Chat webhook), and `sendTelegram()` (Telegram bot). Each channel is individually swappable, wrapped in its own try/catch, and **must never fail the submission**. Each is inert until its Config keys are set.
+- **In-Workspace channels carry full detail** (name, IC, ward, bed, RN, time of death, flags, notes, contact): `sendEmail` (any `alertEmails`) and `sendChat` (any `chatWebhookUrl`) — safe because they stay inside MOH Workspace.
+- **Google Chat is effectively unavailable**: the org has **disabled incoming webhooks**, so `sendChat` can't be turned on there. Email is the working in-Workspace channel.
+- **Telegram is a non-MOH third party** (same category as the dropped WhatsApp), so it carries an **identifier-light nudge only** — ward, bed, referring staff + contact, referral ID, and an app link; **never patient name/IC/time-of-death** (`buildTelegramNudge_`). That "notification, not data transfer" design is the sanctioned exception; keep it identifier-light. Config: `telegramBotToken` + `telegramChatId`.
+- **WhatsApp was dropped** (every route runs through a non-MOH third party, and it carried full detail). Do not reintroduce it without a governance decision.
 
 ## Access model — three tiers (SPEC v2.0 §4)
 
