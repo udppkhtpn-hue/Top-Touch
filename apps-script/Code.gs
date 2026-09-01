@@ -71,8 +71,12 @@ function doPost(e) {
         result = respondReferral(payload, token);
         break;
 
+      // ---- Phase 3: education hub (Education.gs) — open tier, no patient data ----
+      case 'getEducation':
+        result = getEducation(payload, code);
+        break;
+
       // ---- Later phases: stubbed, signatures visible ----
-      case 'getEducation':      // Phase 3
       case 'getConfigPublic':   // Phase 3 (must never leak codes)
       case 'listReferrals':     // Phase 2
       case 'updateReferral':    // Phase 2
