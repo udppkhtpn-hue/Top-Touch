@@ -30,16 +30,16 @@
   function videoAreaHtml(m) {
     var v = m.driveFileId;
     if (!v) return '<div class="edu-soon-box">Video akan dimuat naik tidak lama lagi</div>';
-    var local = isLocalVideo(v);
-    var posterImg = local ? '' :
-      '<img src="' + esc(driveThumb(v)) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">';
-    var note = local ? 'Video &middot; dimuatkan bila dikelik' : 'Video Google Drive &middot; dimuatkan bila dikelik';
-    return '<div class="edu-video" data-file="' + esc(v) + '" data-local="' + (local ? '1' : '0') + '">' +
+    if (isLocalVideo(v)) {
+      // Self-hosted: auto-loads (showing a % progress) when it scrolls into view.
+      return '<div class="edu-video" data-file="' + esc(v) + '" data-local="1"></div>';
+    }
+    // Google Drive fallback: tap-to-load poster + iframe player.
+    return '<div class="edu-video" data-file="' + esc(v) + '" data-local="0">' +
       '<button type="button" class="edu-poster" aria-label="Mainkan video: ' + esc(m.title) + '">' +
-      posterImg +
+      '<img src="' + esc(driveThumb(v)) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' +
       '<span class="edu-play-badge"><span class="tri">&#9654;</span> Main video</span>' +
-      '</button></div>' +
-      '<div class="edu-note">' + note + '</div>';
+      '</button></div>';
   }
 
   function moduleHtml(m, i) {
@@ -56,22 +56,78 @@
     '</article>';
   }
 
-  // Click-to-load: swap the poster for the Drive iframe on tap (saves mobile data).
+  // Google Drive posters: tap to swap in the iframe player (self-hosted videos
+  // auto-load instead — see setupLocalVideos below).
   listEl.addEventListener('click', function (e) {
     var btn = e.target && e.target.closest ? e.target.closest('.edu-poster') : null;
     if (!btn) return;
     var box = btn.closest('.edu-video');
     var v = box && box.getAttribute('data-file');
     if (!v) return;
-    if (box.getAttribute('data-local') === '1') {
-      // Native player — controls auto-hide during playback; plays inline (portrait).
-      box.innerHTML = '<video src="' + esc(localSrc(v)) + '" controls playsinline autoplay ' +
-        'preload="metadata" title="Video pendidikan"></video>';
-    } else {
-      box.innerHTML = '<iframe src="' + esc(driveEmbed(v)) +
-        '" allow="autoplay; fullscreen" allowfullscreen title="Video pendidikan"></iframe>';
-    }
+    box.innerHTML = '<iframe src="' + esc(driveEmbed(v)) +
+      '" allow="autoplay; fullscreen" allowfullscreen title="Video pendidikan"></iframe>';
   });
+
+  // Self-hosted videos auto-load once they scroll into view (module 1 is in view on
+  // page load, so it starts immediately), showing a real download percentage.
+  function setupLocalVideos() {
+    var boxes = listEl.querySelectorAll('.edu-video[data-local="1"]');
+    if (!boxes.length) return;
+    if (!('IntersectionObserver' in window)) {
+      for (var i = 0; i < boxes.length; i++) mountLocalVideo(boxes[i]);
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { io.unobserve(en.target); mountLocalVideo(en.target); }
+      });
+    }, { rootMargin: '250px' });
+    for (var j = 0; j < boxes.length; j++) io.observe(boxes[j]);
+  }
+
+  function mountLocalVideo(box) {
+    if (box.getAttribute('data-mounted') === '1') return;
+    box.setAttribute('data-mounted', '1');
+    var src = localSrc(box.getAttribute('data-file'));
+
+    box.innerHTML =
+      '<div class="edu-loading">' +
+        '<div class="edu-loading-pct">0%</div>' +
+        '<div class="edu-loading-lbl">Memuatkan video…</div>' +
+        '<div class="edu-bar"><div class="edu-bar-fill"></div></div>' +
+      '</div>';
+    var pctEl = box.querySelector('.edu-loading-pct');
+    var fillEl = box.querySelector('.edu-bar-fill');
+
+    // Stream the file so we can show a real byte percentage, then play from memory.
+    fetch(src).then(function (resp) {
+      if (!resp.ok || !resp.body) throw new Error('no-stream');
+      var total = parseInt(resp.headers.get('Content-Length'), 10) || 0;
+      var received = 0, chunks = [];
+      var reader = resp.body.getReader();
+      function pump() {
+        return reader.read().then(function (r) {
+          if (r.done) return;
+          chunks.push(r.value); received += r.value.length;
+          if (total > 0) {
+            var p = Math.min(100, Math.round(received / total * 100));
+            pctEl.textContent = p + '%';
+            fillEl.style.width = p + '%';
+          } else {
+            pctEl.textContent = (received / 1048576).toFixed(1) + ' MB';
+          }
+          return pump();
+        });
+      }
+      return pump().then(function () {
+        var url = URL.createObjectURL(new Blob(chunks, { type: 'video/mp4' }));
+        box.innerHTML = '<video src="' + url + '" controls playsinline title="Video pendidikan"></video>';
+      });
+    }).catch(function () {
+      // Older browser / stream failure: let the browser stream it directly (no %).
+      box.innerHTML = '<video src="' + esc(src) + '" controls playsinline preload="auto" title="Video pendidikan"></video>';
+    });
+  }
 
   function render(modules) {
     if (!modules.length) {
@@ -82,6 +138,7 @@
     }
     stateEl.style.display = 'none';
     listEl.innerHTML = modules.map(moduleHtml).join('');
+    setupLocalVideos();
   }
 
   apiPost('getEducation', {})
