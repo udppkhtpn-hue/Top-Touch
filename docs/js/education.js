@@ -21,16 +21,25 @@
   function driveThumb(id) { return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w1280'; }
   function driveEmbed(id) { return 'https://drive.google.com/file/d/' + encodeURIComponent(id) + '/preview'; }
 
+  // A self-hosted video is a filename/path (e.g. "Modul-1.mp4"); anything else is a
+  // Google Drive file id. Self-hosted plays in the phone's native <video> player
+  // (its controls auto-hide during playback); Drive plays in Google's iframe player.
+  function isLocalVideo(v) { return /\.(mp4|webm|ogg|mov|m4v)$/i.test(v) || v.indexOf('/') >= 0; }
+  function localSrc(v) { return (v.indexOf('/') >= 0) ? v : 'video/' + v; }
+
   function videoAreaHtml(m) {
-    if (m.driveFileId) {
-      return '<div class="edu-video" data-file="' + esc(m.driveFileId) + '">' +
-        '<button type="button" class="edu-poster" aria-label="Mainkan video: ' + esc(m.title) + '">' +
-        '<img src="' + esc(driveThumb(m.driveFileId)) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' +
-        '<span class="edu-play-badge"><span class="tri">&#9654;</span> Main video</span>' +
-        '</button></div>' +
-        '<div class="edu-note">Video Google Drive &middot; dimuatkan bila dikelik</div>';
-    }
-    return '<div class="edu-soon-box">Video akan dimuat naik tidak lama lagi</div>';
+    var v = m.driveFileId;
+    if (!v) return '<div class="edu-soon-box">Video akan dimuat naik tidak lama lagi</div>';
+    var local = isLocalVideo(v);
+    var posterImg = local ? '' :
+      '<img src="' + esc(driveThumb(v)) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">';
+    var note = local ? 'Video &middot; dimuatkan bila dikelik' : 'Video Google Drive &middot; dimuatkan bila dikelik';
+    return '<div class="edu-video" data-file="' + esc(v) + '" data-local="' + (local ? '1' : '0') + '">' +
+      '<button type="button" class="edu-poster" aria-label="Mainkan video: ' + esc(m.title) + '">' +
+      posterImg +
+      '<span class="edu-play-badge"><span class="tri">&#9654;</span> Main video</span>' +
+      '</button></div>' +
+      '<div class="edu-note">' + note + '</div>';
   }
 
   function moduleHtml(m, i) {
@@ -52,10 +61,16 @@
     var btn = e.target && e.target.closest ? e.target.closest('.edu-poster') : null;
     if (!btn) return;
     var box = btn.closest('.edu-video');
-    var id = box && box.getAttribute('data-file');
-    if (!id) return;
-    box.innerHTML = '<iframe src="' + esc(driveEmbed(id)) +
-      '" allow="autoplay; fullscreen" allowfullscreen title="Video pendidikan"></iframe>';
+    var v = box && box.getAttribute('data-file');
+    if (!v) return;
+    if (box.getAttribute('data-local') === '1') {
+      // Native player — controls auto-hide during playback; plays inline (portrait).
+      box.innerHTML = '<video src="' + esc(localSrc(v)) + '" controls playsinline autoplay ' +
+        'preload="metadata" title="Video pendidikan"></video>';
+    } else {
+      box.innerHTML = '<iframe src="' + esc(driveEmbed(v)) +
+        '" allow="autoplay; fullscreen" allowfullscreen title="Video pendidikan"></iframe>';
+    }
   });
 
   function render(modules) {
