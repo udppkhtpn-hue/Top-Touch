@@ -10,85 +10,42 @@
   <link rel="stylesheet" href="css/style.css">
 
   <style>
-    /* ---- Pendidikan — page-scoped styles ---- */
+    /* ---- Pendidikan — static module index (no CMS / no sheet) ---- */
     .edu-wrap { max-width: var(--maxw); }
-    .edu-intro { margin: 6px 0 26px; }
+    .edu-intro { margin: 6px 0 22px; }
     .edu-intro h1 { margin: 0 0 8px; }
 
-    .edu-list { display: flex; flex-direction: column; gap: 20px; }
+    .mod-index { display: flex; flex-direction: column; gap: 14px; }
 
-    .edu-module {
+    .mod-card {
+      display: flex; gap: 14px; align-items: flex-start;
       background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
-      box-shadow: var(--shadow-sm); overflow: hidden;
+      box-shadow: var(--shadow-sm); padding: 16px 18px; text-decoration: none; color: inherit;
+      transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
     }
-    .edu-head { display: flex; align-items: flex-start; gap: 14px; padding: 18px 18px 14px; }
-    .edu-num {
+    .mod-card:hover, .mod-card:focus-visible {
+      border-color: var(--green); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.10);
+    }
+    .mod-card:focus-visible { outline: 3px solid var(--green-light); outline-offset: 2px; }
+
+    .mod-num {
       flex: none; width: 44px; height: 44px; border-radius: 12px;
       background: var(--green-light); color: var(--green-darker);
       font-family: var(--font-display); font-weight: 800; font-size: 1.25rem;
       display: grid; place-items: center; font-variant-numeric: tabular-nums;
     }
-    .edu-titles { min-width: 0; }
-    .edu-cat {
-      font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-      color: var(--green); margin: 0 0 3px;
-    }
-    .edu-title { margin: 0; font-size: 1.18rem; line-height: 1.25; }
-    .edu-desc { margin: 6px 18px 0; color: var(--muted); font-size: .95rem; line-height: 1.55; }
+    .mod-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .mod-cat { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--green); }
+    .mod-title { font-size: 1.18rem; font-weight: 700; line-height: 1.25; }
+    .mod-desc { color: var(--muted); font-size: .92rem; line-height: 1.5; margin-top: 2px; }
+    .mod-go { margin-top: 8px; font-weight: 700; font-size: .9rem; color: var(--green); }
 
-    /* Portrait 9:16 video area — the modules are shot for phones. Capped in width
-       so it stays phone-sized (not absurdly tall) on wider screens, and centred. */
-    .edu-video { position: relative; margin: 14px auto 18px; background: #0d1f16;
-      aspect-ratio: 9 / 16; width: calc(100% - 36px); max-width: 320px;
-      border-radius: var(--radius-sm); overflow: hidden; }
-    .edu-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-    .edu-video video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; object-fit: contain; }
-
-    /* Auto-load progress (self-hosted video) */
-    .edu-loading { position: absolute; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 10px; padding: 20px; text-align: center; color: #fff; }
-    .edu-loading-pct { font-family: var(--font-display); font-weight: 800; font-size: 2rem;
-      line-height: 1; font-variant-numeric: tabular-nums; }
-    .edu-loading-lbl { font-size: .82rem; opacity: .8; }
-    .edu-bar { width: 72%; max-width: 200px; height: 6px; border-radius: 999px;
-      background: rgba(255,255,255,.22); overflow: hidden; }
-    .edu-bar-fill { height: 100%; width: 0; background: var(--green-light); border-radius: 999px;
-      transition: width .2s ease; }
-    @media (prefers-reduced-motion: reduce) { .edu-bar-fill { transition: none; } }
-
-    /* Click-to-load poster (saves the staff's mobile data — loads only on tap) */
-    .edu-poster { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0;
-      cursor: pointer; background: #0d1f16 center/cover no-repeat; display: grid; place-items: center; }
-    .edu-poster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; }
-    .edu-poster:hover img, .edu-poster:focus-visible img { opacity: .7; }
-    .edu-play-badge {
-      position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 10px;
-      background: rgba(255,255,255,0.95); color: var(--green-darker);
-      border-radius: 999px; padding: 12px 20px 12px 16px; font-weight: 700; font-size: .95rem;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.28);
-    }
-    .edu-play-badge .tri {
-      display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
-      background: var(--green); color: #fff; font-size: .8rem; padding-left: 2px;
-    }
-    .edu-poster:focus-visible { outline: 3px solid var(--green-light); outline-offset: -3px; }
-    .edu-note { font-size: .78rem; color: var(--muted); padding: 0 18px 16px; text-align: center; }
-
-    /* Coming-soon module (no video yet) — same portrait frame as a real video */
-    .edu-module.is-soon { opacity: .72; }
-    .edu-soon-box {
-      margin: 14px auto 18px; aspect-ratio: 9 / 16; width: calc(100% - 36px); max-width: 320px;
-      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
-      display: grid; place-items: center; color: var(--muted); font-weight: 600; text-align: center; padding: 12px;
-    }
-
-    .edu-state { text-align: center; color: var(--muted); padding: 40px 0; }
     .edu-foot-note { margin: 26px 0 8px; padding: 12px 14px; background: var(--green-tint);
       border-radius: var(--radius-sm); font-size: .84rem; color: var(--green-darker); }
 
     @media (min-width: 620px) {
-      .edu-num { width: 48px; height: 48px; font-size: 1.35rem; }
-      .edu-title { font-size: 1.3rem; }
+      .mod-num { width: 48px; height: 48px; font-size: 1.35rem; }
+      .mod-title { font-size: 1.3rem; }
     }
   </style>
 </head>
@@ -123,15 +80,37 @@
 
         <div class="edu-intro">
           <h1>Pendidikan</h1>
-          <p class="lede">Modul pembelajaran ringkas mengenai pendermaan organ &amp; tisu — untuk semua staf. Kelik untuk menonton.</p>
+          <p class="lede">Modul pembelajaran ringkas mengenai pendermaan organ &amp; tisu — untuk semua staf. Kelik satu modul untuk menonton.</p>
         </div>
 
-        <div class="edu-list" id="eduList" aria-live="polite"></div>
+        <!-- Static module index. To add a module: create modul-N.html (copy an
+             existing one, swap the title + video file), then add a card here. -->
+        <div class="mod-index">
 
-        <div class="edu-state" id="eduState">Memuatkan modul…</div>
+          <a class="mod-card" href="modul-1.html">
+            <span class="mod-num">01</span>
+            <span class="mod-body">
+              <span class="mod-cat">Modul 1</span>
+              <span class="mod-title">Pengenalan Asas Pendermaan Organ</span>
+              <span class="mod-desc">Asas pendermaan organ &amp; tisu untuk petugas barisan hadapan.</span>
+              <span class="mod-go">Tonton video &rarr;</span>
+            </span>
+          </a>
+
+          <a class="mod-card" href="modul-2.html">
+            <span class="mod-num">02</span>
+            <span class="mod-body">
+              <span class="mod-cat">Modul 2</span>
+              <span class="mod-title">Pengecaman Klinikal dan Saringan Penderma</span>
+              <span class="mod-desc">Cara mengenal pasti penderma berpotensi di wad dan langkah saringan awal.</span>
+              <span class="mod-go">Tonton video &rarr;</span>
+            </span>
+          </a>
+
+        </div>
 
         <div class="edu-foot-note">
-          🎓 Video dimuatkan secara automatik semasa anda menatal ke setiap modul (menggunakan data mudah alih). Modul baharu akan ditambah dari semasa ke semasa.
+          🎓 Modul baharu akan ditambah dari semasa ke semasa.
         </div>
 
       </div>
@@ -145,9 +124,6 @@
     </footer>
   </main>
 
-  <script defer src="js/config.js"></script>
-  <script defer src="js/api.js"></script>
-  <script defer src="js/education.js"></script>
   <script defer src="js/nav.js"></script>
 </body>
 </html>
