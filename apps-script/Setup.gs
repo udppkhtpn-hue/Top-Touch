@@ -50,7 +50,7 @@ var SHEETS = {
     'consentedAt'          // funnel timing
   ],
   Users: [
-    'username', 'pinHash', 'salt', 'name', 'role', 'oncall',
+    'username', 'pin', 'pinHash', 'salt', 'name', 'role', 'oncall',
     'whatsappNumber', 'callmebotKey', 'sessionToken', 'tokenExpiry'
   ],
   Education: [
@@ -66,13 +66,13 @@ var SHEETS = {
 };
 
 // ---------------------------------------------------------------------------
-// Default admin credentials — CHANGE THE PIN after first login (Phase 2).
-// Auth is not built until Phase 2; this row just seeds the schema so the
-// Users sheet is not empty and the hashing scheme is demonstrable.
+// Default admin credentials — CHANGE THE PIN before go-live. The PIN is stored
+// in plaintext in the Users sheet's `pin` column (the sheet is private to the
+// TOP team), so it can be changed by simply editing that cell.
 // ---------------------------------------------------------------------------
 var DEFAULT_ADMIN = {
   username: 'admin',
-  pin: '1234',           // <-- change this after Phase 2 auth is live
+  pin: '1234',           // <-- change this in the Users sheet before go-live
   name: 'TOP Admin',
   role: 'admin',
   oncall: 'Y'
@@ -148,14 +148,17 @@ function initializeDatabase() {
     ss.deleteSheet(defaultSheet);
   }
 
-  // 4. Seed the default admin user (salted SHA-256 PIN).
-  var salt = Utilities.getUuid();
-  var pinHash = sha256Hex_(DEFAULT_ADMIN.pin + salt);
+  // 4. Seed the default admin user. The Users sheet is private to the TOP team,
+  //    so the PIN is stored in plaintext in the `pin` column — change the password
+  //    by editing that cell. (The legacy `pinHash`/`salt` columns stay for
+  //    backward compatibility but are left blank; login falls back to them only
+  //    when `pin` is empty.)
   var usersSheet = ss.getSheetByName('Users');
   usersSheet.appendRow([
     DEFAULT_ADMIN.username, // username
-    pinHash,                // pinHash
-    salt,                   // salt
+    DEFAULT_ADMIN.pin,      // pin (plaintext)
+    '',                     // pinHash (legacy, unused when pin is set)
+    '',                     // salt (legacy)
     DEFAULT_ADMIN.name,     // name
     DEFAULT_ADMIN.role,     // role
     DEFAULT_ADMIN.oncall,   // oncall

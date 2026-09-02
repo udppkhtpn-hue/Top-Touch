@@ -64,7 +64,7 @@ Live: [https://udppkhtpn-hue.github.io/Top-Touch/](https://udppkhtpn-hue.github.
 ## Data model (Google Sheets — SPEC §7)
 
 - **Referrals** — one row per referral. Status is now just **`NEW` (open) → `RESPONDED` (closed)**: there is no multi-step lifecycle. The ward creates a case `NEW`; an admin taps "Respons & tutup" in the cockpit, which sets `status = RESPONDED` (the app's single status write, `respondReferral`, token-gated + audited) and drops it off the live board. No one hand-edits the Sheet to advance status. (Legacy closed statuses `PROCURED / NOT_PROCEEDED / SELESAI` still count as closed if present.)  
-- **Users** — admins/roster: username, pinHash (SHA-256 \+ per-user salt), role, oncall, chat/contact, sessionToken, tokenExpiry.  
+- **Users** — admins/roster: username, **pin (plaintext — the Users sheet is private to the TOP team; change the password by editing this cell)**, role, oncall, chat/contact, sessionToken, tokenExpiry. Legacy `pinHash` + `salt` columns remain for backward compatibility; `login` uses them only when `pin` is empty.  
 - **Education**, **AuditLog**, **Config**.  
 - **Config keys (README):** `wardList`, `escalationMinutes`, `maxEscalations`, `adminUrl`, `dashboardCode`, `wardCode`/`wardCodeEnabled`, `chatWebhookUrl`, `alertEmails`, `alertProvider`. `getConfigPublic` must never leak `dashboardCode`, `wardCode`, `chatWebhookUrl`, or `alertEmails`.
 

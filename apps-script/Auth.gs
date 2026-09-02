@@ -48,12 +48,23 @@ function login(payload) {
       var row = values[i];
       if (String(row[idx.username] || '').trim() !== username) continue;
 
-      var salt = String(row[idx.salt] || '');
-      var expected = String(row[idx.pinHash] || '');
-      // A user with no hash configured cannot log in (fail closed).
-      if (!expected) { appendAudit_(username, 'LOGIN_FAIL', '', 'no_hash'); return { ok: false, error: 'invalid_credentials' }; }
-
-      if (sha256Hex_(pin + salt) !== expected) {
+      // The Users sheet is private to the TOP team, so a login PIN may be stored
+      // directly in a plaintext `pin` column — change the password by editing that
+      // cell in the sheet. If `pin` is filled for this user we compare it directly;
+      // otherwise we fall back to the legacy salted-SHA-256 (`pinHash` + `salt`).
+      var plainPin = (idx.pin != null) ? String(row[idx.pin] || '').trim() : '';
+      var storedHash = String(row[idx.pinHash] || '');
+      var pinOk;
+      if (plainPin) {
+        pinOk = (pin === plainPin);
+      } else if (storedHash) {
+        pinOk = (sha256Hex_(pin + String(row[idx.salt] || '')) === storedHash);
+      } else {
+        // No PIN configured at all — fail closed.
+        appendAudit_(username, 'LOGIN_FAIL', '', 'no_pin');
+        return { ok: false, error: 'invalid_credentials' };
+      }
+      if (!pinOk) {
         appendAudit_(username, 'LOGIN_FAIL', '', 'bad_pin');
         return { ok: false, error: 'invalid_credentials' };
       }
