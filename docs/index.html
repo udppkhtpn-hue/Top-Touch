@@ -99,6 +99,27 @@
     .nav-card--shot .nc-sub { color: rgba(255,255,255,.86); }
     .nav-card--shot:hover .nc-shot, .nav-card--shot:focus-visible .nc-shot { transform: scale(1.05); }
     @media (prefers-reduced-motion: reduce) { .nav-card--shot .nc-shot { transition: none; } }
+
+    /* ---- Aktiviti carousel (landscape photos + caption) ---- */
+    #aktiviti { scroll-margin-top: 80px; }
+    .act-carousel {
+      margin-top: 22px; display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch; padding: 4px 2px 14px;
+    }
+    .act-carousel::-webkit-scrollbar { height: 6px; }
+    .act-carousel::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+    .act-carousel::-webkit-scrollbar-track { background: transparent; }
+    .act-slide { flex: 0 0 auto; width: clamp(270px, 84vw, 400px); scroll-snap-align: start;
+      display: flex; flex-direction: column; gap: 12px; margin: 0; }
+    .act-media {
+      position: relative; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden;
+      background: #0d1f16; border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+      transition: transform .22s ease, box-shadow .22s ease;
+    }
+    .act-media img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+    .act-slide:hover .act-media { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(16,60,36,.16); }
+    .act-cap { font-size: .95rem; line-height: 1.42; color: var(--ink); font-weight: 500; }
+    @media (prefers-reduced-motion: reduce) { .act-media { transition: none; } }
   </style>
 </head>
 <body>
@@ -210,8 +231,8 @@
             <p class="edu-lede">Modul pembelajaran ringkas untuk semua staf. Leret dan kelik satu modul untuk menonton.</p>
           </div>
           <div class="edu-arrows">
-            <button type="button" class="edu-arrow" data-dir="-1" aria-label="Modul sebelumnya">&larr;</button>
-            <button type="button" class="edu-arrow" data-dir="1" aria-label="Modul seterusnya">&rarr;</button>
+            <button type="button" class="edu-arrow" data-dir="-1" data-for="eduCarousel" aria-label="Modul sebelumnya">&larr;</button>
+            <button type="button" class="edu-arrow" data-dir="1" data-for="eduCarousel" aria-label="Modul seterusnya">&rarr;</button>
           </div>
         </div>
 
@@ -251,6 +272,66 @@
             </span>
             <span class="edu-slide-title">Modul 4 - Protokol Komunikasi Bersama Keluarga</span>
           </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- AKTIVITI — activity photo carousel -->
+    <section class="section section-alt" id="aktiviti">
+      <div class="container">
+        <div class="edu-sec-head">
+          <div>
+            <span class="edu-eyebrow">Aktiviti</span>
+            <h2 class="edu-h2">Aktiviti Pasukan TOP</h2>
+            <p class="edu-lede">Antara aktiviti dan program pasukan T.O.P. HTPN.</p>
+          </div>
+          <div class="edu-arrows">
+            <button type="button" class="edu-arrow" data-dir="-1" data-for="aktivitiCarousel" aria-label="Gambar sebelumnya">&larr;</button>
+            <button type="button" class="edu-arrow" data-dir="1" data-for="aktivitiCarousel" aria-label="Gambar seterusnya">&rarr;</button>
+          </div>
+        </div>
+
+        <div class="act-carousel" id="aktivitiCarousel">
+          <figure class="act-slide">
+            <span class="act-media"><img src="img/activities/act-1.jpg" alt="CME PKD Hulu Langat" loading="lazy" decoding="async"></span>
+            <figcaption class="act-cap">CME PKD Hulu Langat</figcaption>
+          </figure>
+          <figure class="act-slide">
+            <span class="act-media"><img src="img/activities/act-2.jpg" alt="Promosi di Sekolah Menengah Kebangsaan Pandan Indah" loading="lazy" decoding="async"></span>
+            <figcaption class="act-cap">Promosi di Sekolah Menengah Kebangsaan Pandan Indah</figcaption>
+          </figure>
+          <figure class="act-slide">
+            <span class="act-media"><img src="img/activities/act-3.jpg" alt="Promosi di ANMS @ Majlis Pembandaran Ampang" loading="lazy" decoding="async"></span>
+            <figcaption class="act-cap">Promosi di ANMS @ Majlis Pembandaran Ampang</figcaption>
+          </figure>
+          <figure class="act-slide">
+            <span class="act-media"><img src="img/activities/act-4.jpg" alt="Nyalaan Lampu Hijau sempena Minggu Kesedaran Pendermaan Organ Kebangsaan 2025" loading="lazy" decoding="async"></span>
+            <figcaption class="act-cap">Nyalaan Lampu Hijau sempena Minggu Kesedaran Pendermaan Organ Kebangsaan 2025</figcaption>
+          </figure>
+          <figure class="act-slide">
+            <span class="act-media"><img src="img/activities/act-5.jpg" alt="Promosi di Ngo Chew Hong Oils &amp; Fats (M) Sdn Bhd" loading="lazy" decoding="async"></span>
+            <figcaption class="act-cap">Promosi di Ngo Chew Hong Oils &amp; Fats (M) Sdn Bhd</figcaption>
+          </figure>
+          <figure class="act-slide">
+            <span class="act-media"><img src="img/activities/act-6.jpg" alt="Aktiviti kayuhan sempena sambutan Minggu Kesedaran Pendermaan Organ peringkat Kebangsaan 2025" loading="lazy" decoding="async"></span>
+            <figcaption class="act-cap">Aktiviti kayuhan sempena sambutan Minggu Kesedaran Pendermaan Organ peringkat Kebangsaan 2025</figcaption>
+          </figure>
+          <figure class="act-slide">
+            <span class="act-media"><img src="img/activities/act-7.jpg" alt="Penyertaan di Aktiviti sambutan Minggu Kesedaran Pendermaan Organ peringkat Kebangsaan 2025" loading="lazy" decoding="async"></span>
+            <figcaption class="act-cap">Penyertaan di Aktiviti sambutan Minggu Kesedaran Pendermaan Organ peringkat Kebangsaan 2025</figcaption>
+          </figure>
+          <figure class="act-slide">
+            <span class="act-media"><img src="img/activities/act-8.jpg" alt="Bersama Pengurusan Tertinggi hospital di Minggu Kesedaran Pendermaan Organ Peringkat Hospital 2025" loading="lazy" decoding="async"></span>
+            <figcaption class="act-cap">Bersama Pengurusan Tertinggi hospital di Minggu Kesedaran Pendermaan Organ Peringkat Hospital 2025</figcaption>
+          </figure>
+          <figure class="act-slide">
+            <span class="act-media"><img src="img/activities/act-9.jpg" alt="Bersama Pengurusan Tertinggi hospital di Minggu Kesedaran Pendermaan Organ Peringkat Hospital 2025" loading="lazy" decoding="async"></span>
+            <figcaption class="act-cap">Bersama Pengurusan Tertinggi hospital di Minggu Kesedaran Pendermaan Organ Peringkat Hospital 2025</figcaption>
+          </figure>
+          <figure class="act-slide">
+            <span class="act-media"><img src="img/activities/act-10.jpg" alt="Ceramah berkenaan Pendermaan Organ ketika Minggu Kesedaran Pendermaan Organ Peringkat Hospital 2025" style="object-position:center 22%" loading="lazy" decoding="async"></span>
+            <figcaption class="act-cap">Ceramah berkenaan Pendermaan Organ ketika Minggu Kesedaran Pendermaan Organ Peringkat Hospital 2025</figcaption>
+          </figure>
         </div>
       </div>
     </section>
@@ -384,12 +465,13 @@
         bgVideos.forEach(function (v) { var p = v.play(); if (p && p.catch) p.catch(function(){}); });
       }
 
-      // ---- Pendidikan carousel: arrow buttons + enable/disable at ends ----
-      var carousel = document.getElementById('eduCarousel');
-      if (carousel) {
-        var arrows = Array.prototype.slice.call(document.querySelectorAll('.edu-arrow'));
+      // ---- Horizontal carousels (Pendidikan + Aktiviti): arrows + end states ----
+      function initCarousel(carousel) {
+        if (!carousel) return;
+        var arrows = Array.prototype.slice.call(
+          document.querySelectorAll('.edu-arrow[data-for="' + carousel.id + '"]'));
         function step() {
-          var slide = carousel.querySelector('.edu-slide');
+          var slide = carousel.querySelector('.edu-slide, .act-slide');
           if (!slide) return carousel.clientWidth * 0.8;
           var gap = parseFloat(getComputedStyle(carousel).columnGap || getComputedStyle(carousel).gap || 16) || 16;
           return slide.getBoundingClientRect().width + gap;
@@ -411,6 +493,8 @@
         window.addEventListener('resize', updateArrows);
         updateArrows();
       }
+      initCarousel(document.getElementById('eduCarousel'));
+      initCarousel(document.getElementById('aktivitiCarousel'));
     })();
   </script>
   <script src="js/nav.js"></script>
