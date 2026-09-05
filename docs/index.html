@@ -8,6 +8,98 @@
   <title>T.O.P. Touch — Sentuhan Keikhlasan</title>
   <meta name="description" content="T.O.P. Touch (Sentuhan Keikhlasan) — platform rujukan penderma organ & tisu, TOP Team HTPN.">
   <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    /* ---- Pendidikan carousel (landing section) ---- */
+    #pendidikan { scroll-margin-top: 80px; }
+    .edu-sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .edu-eyebrow { display: block; font-size: .74rem; font-weight: 700; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--green); margin-bottom: 6px; }
+    .edu-h2 { margin: 0; font-size: clamp(1.5rem, 3.4vw, 2.1rem); line-height: 1.12; }
+    .edu-lede { margin: 8px 0 0; color: var(--muted); max-width: 52ch; font-size: .98rem; }
+
+    .edu-arrows { display: flex; gap: 8px; }
+    .edu-arrow {
+      width: 42px; height: 42px; border-radius: 50%; flex: none; cursor: pointer;
+      background: var(--white); border: 1px solid var(--line); color: var(--green-darker);
+      font-size: 1.2rem; line-height: 1; display: grid; place-items: center;
+      transition: background .2s ease, border-color .2s ease, color .2s ease, transform .2s ease, opacity .2s ease;
+    }
+    .edu-arrow:hover:not(:disabled) { background: var(--green); border-color: var(--green); color: #fff; transform: translateY(-1px); }
+    .edu-arrow:focus-visible { outline: 3px solid var(--green-light); outline-offset: 2px; }
+    .edu-arrow:disabled { opacity: .35; cursor: default; }
+
+    /* The scroller */
+    .edu-carousel {
+      margin-top: 22px; display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch; padding: 4px 2px 14px; scroll-padding-left: 2px;
+    }
+    .edu-carousel::-webkit-scrollbar { height: 6px; }
+    .edu-carousel::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+    .edu-carousel::-webkit-scrollbar-track { background: transparent; }
+
+    .edu-slide {
+      flex: 0 0 auto; width: clamp(178px, 60vw, 220px); scroll-snap-align: start;
+      text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 12px;
+    }
+    .edu-slide-media {
+      position: relative; aspect-ratio: 9 / 16; border-radius: 16px; overflow: hidden;
+      background: #0d1f16; border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+      transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+    }
+    .edu-slide-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .edu-slide:hover .edu-slide-media, .edu-slide:focus-visible .edu-slide-media {
+      transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,.16); border-color: var(--green);
+    }
+    .edu-slide:focus-visible { outline: none; }
+    .edu-slide:focus-visible .edu-slide-media { outline: 3px solid var(--green-light); outline-offset: 2px; }
+
+    .edu-slide-badge {
+      position: absolute; top: 10px; left: 10px; z-index: 2;
+      font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      background: var(--green); color: #fff; padding: .32em .6em; border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    .edu-slide-play {
+      position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none;
+    }
+    .edu-slide-play span {
+      width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+      background: rgba(255,255,255,.92); color: var(--green-darker); font-size: 1rem; padding-left: 3px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.3); transform: scale(.9); opacity: .92;
+      transition: transform .22s ease, opacity .22s ease, background .22s ease;
+    }
+    .edu-slide:hover .edu-slide-play span, .edu-slide:focus-visible .edu-slide-play span {
+      transform: scale(1); opacity: 1; background: #fff;
+    }
+    .edu-slide-title { font-family: var(--font-display, inherit); font-weight: 700; font-size: 1rem; line-height: 1.28; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .edu-slide-media, .edu-slide-play span, .edu-arrow { transition: none; }
+    }
+    @media (max-width: 640px) { .edu-arrows { display: none; } }
+
+    /* ---- Nav cards with a screenshot background (Papan Data / Admin) ---- */
+    .nav-card--shot {
+      position: relative; overflow: hidden; border-color: transparent;
+      min-height: 190px; display: flex; flex-direction: column; justify-content: flex-end;
+      isolation: isolate;
+    }
+    .nav-card--shot .nc-shot {
+      position: absolute; inset: 0; z-index: 0;
+      background-image: var(--shot); background-size: cover; background-position: top center;
+      transition: transform .4s ease;
+    }
+    .nav-card--shot::after {
+      content: ""; position: absolute; inset: 0; z-index: 1;
+      background: linear-gradient(to top, rgba(8,32,22,.94) 8%, rgba(8,32,22,.62) 46%, rgba(8,32,22,.20) 100%);
+    }
+    .nav-card--shot .nc-title, .nav-card--shot .nc-sub { position: relative; z-index: 2; }
+    .nav-card--shot .nc-title { color: #fff; }
+    .nav-card--shot .nc-sub { color: rgba(255,255,255,.86); }
+    .nav-card--shot:hover .nc-shot, .nav-card--shot:focus-visible .nc-shot { transform: scale(1.05); }
+    @media (prefers-reduced-motion: reduce) { .nav-card--shot .nc-shot { transition: none; } }
+  </style>
 </head>
 <body>
 
@@ -34,7 +126,7 @@
         <ul>
           <li><a class="nav-link" href="index.html" aria-current="page">Utama</a></li>
           <li><a class="nav-link" href="refer.html">Rujuk Kes</a></li>
-          <li><a class="nav-link" href="pendidikan.html">Pendidikan</a></li>
+          <li><a class="nav-link" href="#pendidikan">Pendidikan</a></li>
           <li><a class="nav-link" href="dashboard.html">Papan Data</a></li>
           <li><a class="nav-link" href="admin.html">Admin</a></li>
         </ul>
@@ -108,7 +200,62 @@
       </div>
     </section>
 
-    <!-- Navigation (kept solid for tap clarity) -->
+    <!-- PENDIDIKAN — module carousel -->
+    <section class="section" id="pendidikan">
+      <div class="container">
+        <div class="edu-sec-head">
+          <div>
+            <span class="edu-eyebrow">Pendidikan</span>
+            <h2 class="edu-h2">Belajar tentang pendermaan organ</h2>
+            <p class="edu-lede">Modul pembelajaran ringkas untuk semua staf. Leret dan kelik satu modul untuk menonton.</p>
+          </div>
+          <div class="edu-arrows">
+            <button type="button" class="edu-arrow" data-dir="-1" aria-label="Modul sebelumnya">&larr;</button>
+            <button type="button" class="edu-arrow" data-dir="1" aria-label="Modul seterusnya">&rarr;</button>
+          </div>
+        </div>
+
+        <div class="edu-carousel" id="eduCarousel">
+          <a class="edu-slide" href="modul-1.html">
+            <span class="edu-slide-media">
+              <img src="img/modul-1.jpg" alt="Modul 1: Pengenalan Asas Pendermaan Organ" width="480" height="853" loading="lazy" decoding="async">
+              <span class="edu-slide-badge">Modul 1</span>
+              <span class="edu-slide-play"><span>&#9654;</span></span>
+            </span>
+            <span class="edu-slide-title">Modul 1 - Pengenalan Asas Pendermaan Organ</span>
+          </a>
+
+          <a class="edu-slide" href="modul-2.html">
+            <span class="edu-slide-media">
+              <img src="img/modul-2.jpg" alt="Modul 2: Pengecaman Klinikal dan Saringan Penderma" width="480" height="853" loading="lazy" decoding="async">
+              <span class="edu-slide-badge">Modul 2</span>
+              <span class="edu-slide-play"><span>&#9654;</span></span>
+            </span>
+            <span class="edu-slide-title">Modul 2 - Pengecaman Klinikal dan Saringan Penderma</span>
+          </a>
+
+          <a class="edu-slide" href="modul-3.html">
+            <span class="edu-slide-media">
+              <img src="img/modul-3.jpg" alt="Modul 3: Pengurusan di Wad &amp; Peraturan Emas 4 jam" width="480" height="853" loading="lazy" decoding="async">
+              <span class="edu-slide-badge">Modul 3</span>
+              <span class="edu-slide-play"><span>&#9654;</span></span>
+            </span>
+            <span class="edu-slide-title">Modul 3 - Pengurusan di Wad &amp; Peraturan Emas 4 jam</span>
+          </a>
+
+          <a class="edu-slide" href="modul-4.html">
+            <span class="edu-slide-media">
+              <img src="img/modul-4.jpg" alt="Modul 4: Protokol Komunikasi Bersama Keluarga" width="480" height="853" loading="lazy" decoding="async">
+              <span class="edu-slide-badge">Modul 4</span>
+              <span class="edu-slide-play"><span>&#9654;</span></span>
+            </span>
+            <span class="edu-slide-title">Modul 4 - Protokol Komunikasi Bersama Keluarga</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation cards -->
     <section class="section section-alt">
       <div class="container">
         <div class="nav-cards">
@@ -117,18 +264,13 @@
             <span class="nc-title">Rujuk Kes</span>
             <span class="nc-sub">Hantar rujukan penderma berpotensi</span>
           </a>
-          <a class="nav-card" href="pendidikan.html">
-            <span class="nc-emoji">🎓</span>
-            <span class="nc-title">Belajar Tentang Pendermaan Organ</span>
-            <span class="nc-sub">Modul pendidikan pendermaan organ &amp; tisu</span>
-          </a>
-          <a class="nav-card" href="dashboard.html">
-            <span class="nc-emoji">📊</span>
+          <a class="nav-card nav-card--shot" href="dashboard.html" style="--shot:url('img/card-dashboard.jpg')">
+            <span class="nc-shot" aria-hidden="true"></span>
             <span class="nc-title">Papan Data</span>
             <span class="nc-sub">Statistik agregat (perlu kod)</span>
           </a>
-          <a class="nav-card" href="admin.html">
-            <span class="nc-emoji">🔐</span>
+          <a class="nav-card nav-card--shot" href="admin.html" style="--shot:url('img/card-admin.jpg')">
+            <span class="nc-shot" aria-hidden="true"></span>
             <span class="nc-title">Admin</span>
             <span class="nc-sub">Kokpit operasi langsung (log masuk)</span>
           </a>
@@ -240,6 +382,34 @@
         bgVideos.forEach(function (v) { io.observe(v); });
       } else {
         bgVideos.forEach(function (v) { var p = v.play(); if (p && p.catch) p.catch(function(){}); });
+      }
+
+      // ---- Pendidikan carousel: arrow buttons + enable/disable at ends ----
+      var carousel = document.getElementById('eduCarousel');
+      if (carousel) {
+        var arrows = Array.prototype.slice.call(document.querySelectorAll('.edu-arrow'));
+        function step() {
+          var slide = carousel.querySelector('.edu-slide');
+          if (!slide) return carousel.clientWidth * 0.8;
+          var gap = parseFloat(getComputedStyle(carousel).columnGap || getComputedStyle(carousel).gap || 16) || 16;
+          return slide.getBoundingClientRect().width + gap;
+        }
+        function updateArrows() {
+          var max = carousel.scrollWidth - carousel.clientWidth - 2;
+          arrows.forEach(function (b) {
+            var dir = parseInt(b.getAttribute('data-dir'), 10);
+            b.disabled = dir < 0 ? carousel.scrollLeft <= 2 : carousel.scrollLeft >= max;
+          });
+        }
+        arrows.forEach(function (b) {
+          b.addEventListener('click', function () {
+            var dir = parseInt(b.getAttribute('data-dir'), 10);
+            carousel.scrollBy({ left: dir * step() * (window.innerWidth > 900 ? 2 : 1), behavior: reduce ? 'auto' : 'smooth' });
+          });
+        });
+        carousel.addEventListener('scroll', function () { window.requestAnimationFrame(updateArrows); }, { passive: true });
+        window.addEventListener('resize', updateArrows);
+        updateArrows();
       }
     })();
   </script>
