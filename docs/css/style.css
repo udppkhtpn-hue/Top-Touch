@@ -225,6 +225,36 @@ a { color: var(--green-dark); }
   object-fit: contain; background: #fff; border-radius: 9px; padding: 3px;
   box-shadow: var(--shadow-sm);
 }
+/* Institutional co-branding ribbon (hospital + HIO logos + full team name) */
+.masthead-top {
+  gap: 14px;
+  align-items: center;
+  padding-bottom: 11px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.14);
+}
+.masthead-logos {
+  display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto;
+  padding-right: 14px;
+  border-right: 1px solid rgba(255,255,255,.22);
+}
+.masthead-logo {
+  width: 44px; height: 44px; flex: 0 0 auto;
+  object-fit: contain;
+}
+.masthead-org {
+  font-weight: 500; font-size: .78rem; line-height: 1.35;
+  letter-spacing: .005em; color: rgba(255,255,255,.9);
+  max-width: 60ch;
+}
+.masthead-org strong { font-weight: 700; color: #fff; }
+@media (max-width: 639.98px) {
+  .masthead-top { flex-wrap: nowrap; gap: 11px; }
+  .masthead-logos { padding-right: 11px; }
+  .masthead-logo { width: 40px; height: 40px; }
+  .masthead-org { font-size: .7rem; line-height: 1.3; }
+}
+
 .btn-with-logo { gap: 10px; }
 .btn-logo {
   width: 28px; height: 28px; flex: 0 0 auto;
@@ -345,6 +375,23 @@ a { color: var(--green-dark); }
 .nav-card.is-primary .nc-sub { color: rgba(255,255,255,.9); }
 .nav-card.is-soon { opacity: .72; }
 .nav-card .nc-badge { font-size: .7rem; font-weight: 700; color: var(--amber); }
+
+/* Collaboration credit (landing, above footer) */
+.collab { padding: 40px 0 8px; }
+.collab__inner {
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  text-align: center;
+}
+.collab__logo {
+  width: 88px; height: 88px; flex: 0 0 auto;
+  object-fit: contain; border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.collab__caption {
+  margin: 0; max-width: 46ch;
+  color: var(--muted); font-size: .95rem; line-height: 1.55;
+}
+.collab__caption strong { color: var(--ink); font-weight: 700; }
 
 .site-footer { padding: 26px 0 40px; color: var(--muted); font-size: .85rem; text-align: center; }
 
