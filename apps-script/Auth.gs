@@ -35,6 +35,26 @@ function login(payload) {
   var pin = String(payload.pin || '');
   if (!username || !pin) return { ok: false, error: 'invalid_credentials' };
 
+  // Brute-force backstop: cap FAILED logins per username to slow guessing without
+  // hard-locking a real admin out for long. Up to 5 failed attempts per rolling
+  // 60-second window per username; the 6th within that window is refused with
+  // 'too_many_attempts' until the window clears (~a minute). A stressed admin who
+  // mistypes simply waits; a guesser is throttled from thousands/min to ~5/min.
+  // FAILS OPEN on any cache error — login is never blocked by infra trouble.
+  var loginCache = CacheService.getScriptCache();
+  var failKey = 'lf_' + username.toLowerCase();
+  try {
+    if (parseInt(loginCache.get(failKey) || '0', 10) >= 5) {
+      appendAudit_(username, 'LOGIN_LOCKED', '', 'too_many_attempts');
+      return { ok: false, error: 'too_many_attempts' };
+    }
+  } catch (rlErr) { /* fail open */ }
+  function bumpFail_() {
+    try {
+      loginCache.put(failKey, String(parseInt(loginCache.get(failKey) || '0', 10) + 1), 60);
+    } catch (e) { /* fail open */ }
+  }
+
   // Serialize the read-verify-write so two logins can't interleave on the row.
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch (e) { return { ok: false, error: 'server_error' }; }
@@ -62,14 +82,18 @@ function login(payload) {
       } else {
         // No PIN configured at all — fail closed.
         appendAudit_(username, 'LOGIN_FAIL', '', 'no_pin');
+        bumpFail_();
         return { ok: false, error: 'invalid_credentials' };
       }
       if (!pinOk) {
         appendAudit_(username, 'LOGIN_FAIL', '', 'bad_pin');
+        bumpFail_();
         return { ok: false, error: 'invalid_credentials' };
       }
 
-      // Success — mint a token and persist it (+expiry) on the user's row.
+      // Success — clear the failed-attempt counter, then mint a token and persist
+      // it (+expiry) on the user's row.
+      try { loginCache.remove(failKey); } catch (e) { /* non-critical */ }
       var token = Utilities.getUuid() + Utilities.getUuid();
       var expiry = new Date(Date.now() + SESSION_HOURS * 3600 * 1000);
       var rowNum = i + 1; // 1-based; +1 for the header row
@@ -90,6 +114,7 @@ function login(payload) {
 
     // Unknown username — same generic error + timing as a bad PIN.
     appendAudit_(username, 'LOGIN_FAIL', '', 'unknown_user');
+    bumpFail_();
     return { ok: false, error: 'invalid_credentials' };
   } catch (err) {
     return { ok: false, error: 'server_error' };

@@ -361,9 +361,15 @@ function exportCsv(payload, token) {
   };
 }
 
-/** CSV-escape one cell: wrap in quotes and double internal quotes when needed. */
+/** CSV-escape one cell: neutralize formula injection, then quote when needed. */
 function csvCell_(v) {
   var s = (v === null || v === undefined) ? '' : String(v);
+  // Formula-injection guard: a cell starting with = + - @ (or tab/CR) is treated
+  // as a live formula by Excel/Sheets. Referral fields come from an open endpoint,
+  // so a malicious value could plant a formula that runs when an admin opens the
+  // export. Prefix such a cell with an apostrophe to force it to plain text (the
+  // apostrophe is not shown by the spreadsheet).
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   if (/[",\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
   return s;
 }

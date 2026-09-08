@@ -90,8 +90,11 @@ function doPost(e) {
     }
     return jsonOutput_(result);
   } catch (err) {
-    // Router-level safety net. Patient data never reaches here.
-    return jsonOutput_({ ok: false, error: 'server_error', detail: String(err) });
+    // Router-level safety net. Patient data never reaches here. The error detail
+    // is logged server-side only (never returned to the client, to avoid leaking
+    // internal structure); the caller gets a generic error.
+    Logger.log('doPost error: ' + err);
+    return jsonOutput_({ ok: false, error: 'server_error' });
   }
 }
 

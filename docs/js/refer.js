@@ -163,6 +163,7 @@
   var ERROR_MESSAGES = {
     missing_fields: 'Sila lengkapkan semua ruangan bertanda *.',
     invalid_ward_code: 'Kod wad tidak sah.',
+    rate_limited: 'Terlalu banyak penghantaran serentak. Sila tunggu seketika dan cuba lagi.',
     server_error: 'Ralat pelayan. Sila cuba lagi.',
     unknown_action: 'Ralat sistem. Sila hubungi TOP Team.'
   };
@@ -192,7 +193,9 @@
       familyApproached: segValue('familyApproached'),
       staffName: document.getElementById('staffName').value.trim(),
       contactExt: document.getElementById('contactExt').value.trim(),
-      notes: document.getElementById('notes').value.trim()
+      notes: document.getElementById('notes').value.trim(),
+      // Honeypot — always empty for a real user; the server drops it if filled.
+      website: (document.getElementById('website') || {}).value || ''
     };
 
     // Client-side required check (mirrors server). IC format is NOT enforced.

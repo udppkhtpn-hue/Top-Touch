@@ -31,6 +31,32 @@ var REQUIRED_REFERRAL_FIELDS = [
 function submitReferral(payload, code) {
   payload = payload || {};
 
+  // 0a. Honeypot — abuse control for this deliberately-open endpoint.
+  // The form carries a hidden `website` field that a human never sees or fills
+  // (see refer.html). If it comes back non-empty the sender is a bot: silently
+  // accept with a fake success so it never learns it was caught, and write NO
+  // row and fire NO alert. A real referral always leaves this blank, so a
+  // genuine submission is never affected (fails open for humans).
+  if (String(payload.website || '').trim() !== '') {
+    appendAudit_('system', 'SPAM_HONEYPOT', '', 'ward=' + String(payload.ward || ''));
+    return { ok: true, data: { referralId: 'REF-00000000-000' } };
+  }
+
+  // 0b. Flood backstop — a per-minute ceiling far above any real clinical rate.
+  // This form sees <50 referrals/month; 20/minute is astronomically above real
+  // usage (even a mass-casualty surge), so only an automated flood can reach it.
+  // FAILS OPEN on any cache error — a genuine referral is never blocked by infra.
+  try {
+    var rlCache = CacheService.getScriptCache();
+    var rlBucket = 'rl_' + Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyyyMMddHHmm');
+    var rlCount = parseInt(rlCache.get(rlBucket) || '0', 10) + 1;
+    rlCache.put(rlBucket, String(rlCount), 120); // 2-min TTL covers the 1-min bucket
+    if (rlCount > 20) {
+      appendAudit_('system', 'RATE_LIMITED', '', 'count=' + rlCount);
+      return { ok: false, error: 'rate_limited' };
+    }
+  } catch (rlErr) { /* fail open — never block a referral on cache trouble */ }
+
   // 1. Required-field check.
   var missing = [];
   REQUIRED_REFERRAL_FIELDS.forEach(function (f) {

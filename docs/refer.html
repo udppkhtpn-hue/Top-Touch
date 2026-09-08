@@ -2,6 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#1B7A43">
@@ -54,6 +55,15 @@
       <div id="errorBanner" class="error-banner" role="alert" hidden></div>
 
       <form id="referForm" novalidate>
+
+        <!-- Honeypot: a spam trap. Hidden from humans (off-screen, not focusable,
+             hidden from screen readers) and never autofilled. A real user leaves
+             it blank; a bot that fills every field trips it and the server
+             silently drops the submission. Do NOT remove or make this visible. -->
+        <div aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden">
+          <label for="website">Website (jangan isi)</label>
+          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+        </div>
 
         <!-- Ward / location -->
         <div class="field">

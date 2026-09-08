@@ -272,7 +272,8 @@
   function setText(id, val) { var el = document.getElementById(id); if (el) el.textContent = String(val); }
   function setHtml(id, val) { var el = document.getElementById(id); if (el) el.innerHTML = val; }
   function esc(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
   function formatStamp(iso) {
     var d = new Date(iso);

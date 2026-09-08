@@ -101,9 +101,12 @@
     apiPost('login', { username: username, pin: pin })
       .then(function (res) {
         if (!res || res.ok !== true) {
-          throw new Error(res && res.error === 'invalid_credentials'
+          var lm = res && res.error === 'invalid_credentials'
             ? 'Nama pengguna atau PIN tidak sah.'
-            : 'Ralat pelayan. Cuba lagi.');
+            : (res && res.error === 'too_many_attempts'
+              ? 'Terlalu banyak cubaan. Sila tunggu seminit dan cuba lagi.'
+              : 'Ralat pelayan. Cuba lagi.');
+          throw new Error(lm);
         }
         token = res.data.token;
         try {
@@ -485,7 +488,7 @@
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   // =========================================================================
