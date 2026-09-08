@@ -18,3 +18,12 @@ node_modules/
 # clasp (Apps Script CLI) — local link to the script project; do not publish
 .clasp.json
 .clasprc.json
+
+# Internal admin handbook — describes the private database; must NOT be
+# published to the public GitHub Pages site. Kept locally in docs/ only.
+docs/database-handbook.html
+
+# Raw database/app screenshots — contain patient identifiers and a live
+# Telegram bot token. NEVER commit these to the public repo/Pages site.
+docs/img/Screenshot*.png
+docs/img/Screenshot*.PNG
