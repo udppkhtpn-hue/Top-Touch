@@ -5,7 +5,7 @@
  *   1. Creates a standalone spreadsheet named TOP_App_Database
  *   2. Stores its ID in Script Properties (SPREADSHEET_ID) so the web app
  *      is NOT container-bound — every other .gs file opens the sheet by this ID
- *   3. Builds all 5 sheets with the exact headers from SPEC.md §7
+ *   3. Builds all 4 sheets with the exact headers from SPEC.md §7
  *   4. Seeds a default admin user (PIN hashed SHA-256 + per-user salt)
  *   5. Seeds sample Config rows
  *
@@ -52,10 +52,6 @@ var SHEETS = {
   Users: [
     'username', 'pin', 'pinHash', 'salt', 'name', 'role', 'oncall',
     'whatsappNumber', 'callmebotKey', 'sessionToken', 'tokenExpiry'
-  ],
-  Education: [
-    'id', 'title', 'description', 'type', 'driveFileId', 'category',
-    'sortOrder', 'active'
   ],
   AuditLog: [
     'timestamp', 'actor', 'action', 'referralId', 'detail'

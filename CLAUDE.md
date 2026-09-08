@@ -21,7 +21,7 @@ Live: [https://udppkhtpn-hue.github.io/Top-Touch/](https://udppkhtpn-hue.github.
 
 - **Phase 1a \+ 1b:** referral form → Sheet row → `sendAlert()` fan-out (email always, Google Chat when configured).  
 - **apps-script built:** `Setup.gs`, `Code.gs`, `Referrals.gs`, `Alerts.gs`.  
-- **Not built yet:** admin panel, auth, dashboard, education hub, escalation trigger. Their router cases exist but return `not_implemented`. `Dashboard.gs` / `Auth.gs` don't exist yet — add them when building those phases.
+- **Not built yet:** admin panel, auth, dashboard, escalation trigger. Their router cases exist but return `not_implemented`. `Dashboard.gs` / `Auth.gs` don't exist yet — add them when building those phases.
 
 ## Deploy workflow
 
@@ -65,12 +65,12 @@ Live: [https://udppkhtpn-hue.github.io/Top-Touch/](https://udppkhtpn-hue.github.
 
 - **Referrals** — one row per referral. Status is now just **`NEW` (open) → `RESPONDED` (closed)**: there is no multi-step lifecycle. The ward creates a case `NEW`; an admin taps "Respons & tutup" in the cockpit, which sets `status = RESPONDED` (the app's single status write, `respondReferral`, token-gated + audited) and drops it off the live board. No one hand-edits the Sheet to advance status. (Legacy closed statuses `PROCURED / NOT_PROCEEDED / SELESAI` still count as closed if present.)  
 - **Users** — admins/roster: username, **pin (plaintext — the Users sheet is private to the TOP team; change the password by editing this cell)**, role, oncall, chat/contact, sessionToken, tokenExpiry. Legacy `pinHash` + `salt` columns remain for backward compatibility; `login` uses them only when `pin` is empty.  
-- **Education**, **AuditLog**, **Config**.  
+- **AuditLog**, **Config**.  
 - **Config keys (README):** `wardList`, `escalationMinutes`, `maxEscalations`, `adminUrl`, `dashboardCode`, `wardCode`/`wardCodeEnabled`, `chatWebhookUrl`, `alertEmails`, `alertProvider`. `getConfigPublic` must never leak `dashboardCode`, `wardCode`, `chatWebhookUrl`, or `alertEmails`.
 
 ## API (Apps Script) — SPEC v2.0 §8
 
-`POST` JSON `{ action, token?, code?, payload }` → `{ ok, data }` | `{ ok:false, error }`. Actions: `submitReferral` (open, \+wardCode if enabled), `getDashboardPublic`/`getDashboard` (dashboardCode — aggregate, **ward-notification data only**: volume, by-ward, death→referral median, exclusion-flag counts, pledge-card & family-approached counts; no funnel / ack-time / refusal / tissue-yield), `login`/`logout`, `getDashboardAdmin`/`getLiveCases` (token — live cockpit), `respondReferral` (token — close a case), `exportCsv` (token). Stubbed/not built: `getEducation`, `getConfigPublic`, `listReferrals`, `updateReferral`, `manageEducation`, `manageUsers`.
+`POST` JSON `{ action, token?, code?, payload }` → `{ ok, data }` | `{ ok:false, error }`. Actions: `submitReferral` (open, \+wardCode if enabled), `getDashboardPublic`/`getDashboard` (dashboardCode — aggregate, **ward-notification data only**: volume, by-ward, death→referral median, exclusion-flag counts, pledge-card & family-approached counts; no funnel / ack-time / refusal / tissue-yield), `login`/`logout`, `getDashboardAdmin`/`getLiveCases` (token — live cockpit), `respondReferral` (token — close a case), `exportCsv` (token). Stubbed/not built: `getConfigPublic`, `listReferrals`, `updateReferral`, `manageUsers`.
 
 The admin cockpit UI is **"Pusat Operasi"** (formerly "Kokpit Operasi"). It shows the on-call bar, an exceptions strip, and the live window countdowns; each card has a "Respons & tutup" close button. No status/phase board (retired).
 

@@ -28,8 +28,7 @@ Secondary problem: **low awareness** among ward staff about organ/tissue donatio
 
 1. Any ward/clinical staff can notify the TOP team of a potential donor in **under 60 seconds** from a phone.
 2. **Instant push alert** to the TOP team on-call, with automatic escalation if unacknowledged.
-3. An **education hub** (videos + PDF e-flyers streamed from Google Drive) to raise staff awareness.
-4. A **real-time dashboard** of referral statistics, visible to ward staff as well as the TOP team, for monitoring and NTRC reporting.
+3. A **real-time dashboard** of referral statistics, visible to ward staff as well as the TOP team, for monitoring and NTRC reporting.
 
 ## 3. Non-Goals (v1)
 
@@ -42,7 +41,7 @@ Secondary problem: **low awareness** among ward staff about organ/tissue donatio
 
 | Tier | Gate | Pages | Data exposed |
 |---|---|---|---|
-| **Open** | None — shared link / QR poster | Landing, referral form, education hub, QR poster | None readable. Write-only (form submission). |
+| **Open** | None — shared link / QR poster | Landing, referral form, QR poster | None readable. Write-only (form submission). |
 | **Coded** | Shared ward code, checked server-side | Dashboard | Aggregate counts only. Never a patient row. |
 | **Admin** | Username + PIN → session token | Admin panel | Full referral detail, CSV export, user/content management. |
 
@@ -80,7 +79,6 @@ Backend — Google Apps Script Web App (single URL, action router)
    ├─▶ sendAlert() fan-out ─┬─▶ Gmail (MailApp)        — reliable baseline
    │                        ├─▶ Google Chat webhook    — instant push
    │                        └─▶ WhatsApp (CallMeBot)   — optional, pilot
-   ├─▶ Google Drive       = education video/PDF hosting
    └─▶ Time-driven trigger = escalation for unacknowledged referrals
 ```
 
@@ -154,16 +152,7 @@ Full patient details are viewable inside the app only.
 | Google Chat | Primary push | `UrlFetchApp.fetch()` to space webhook, URL in Config |
 | WhatsApp | Optional | CallMeBot per-user key in Users sheet; upgrade path is Meta Cloud API behind the same `sendWhatsApp()` signature |
 
-### 6.3 Education Hub — Open tier
-
-- Content from the `Education` sheet: title, description, type (`video` | `pdf`), Drive file ID, category, sortOrder, active.
-- Videos: `<iframe src="https://drive.google.com/file/d/{FILE_ID}/preview" allow="autoplay">`. Drive handles streaming.
-- PDFs: same `/preview` iframe plus a "Muat turun" button → `https://drive.google.com/uc?export=download&id={FILE_ID}`.
-- Categories: Siapa Boleh Derma · Persediaan Jenazah (4 Langkah) · Dialog Pendermaan · Proses & Carta Alir · Umum/FAQ.
-- Sticky **"🚨 RUJUK KES SEKARANG"** button on every education view, linking to the referral form.
-- Admin can add/edit/deactivate content from the admin panel. No redeployment needed.
-
-### 6.4 Dashboard — Coded tier
+### 6.3 Dashboard — Coded tier
 
 Aggregate statistics, Chart.js from CDN, filterable by month.
 
@@ -184,14 +173,13 @@ Aggregate statistics, Chart.js from CDN, filterable by month.
 
 **CSV export stays in the admin tier** — it carries identifiers.
 
-### 6.5 Admin Panel — Admin tier
+### 6.4 Admin Panel — Admin tier
 
 - **Login** → token session.
 - **Referral inbox:** newest first, status chips (NEW / ACKNOWLEDGED / IN_PROGRESS / PROCURED / NOT_PROCEEDED). Tap → detail → actions:
   - Acknowledge (records `acknowledgedBy` + timestamp, stops escalation)
   - Update status & outcome
   - Record refusal reason (dropdown mirroring Death Audit Form categories: family did not accept death · religious beliefs · deceased's wishes unknown · differing family opinion · concern about mutilation · funeral delay · did not want deceased to suffer more · 3rd party intervention · not stated · others)
-- **Education manager:** CRUD on the Education sheet.
 - **Roster manager:** add/remove admins, set on-call flags, WhatsApp numbers, CallMeBot keys.
 - **CSV export** for NTRC reporting.
 
@@ -202,8 +190,6 @@ Spreadsheet `TOP_App_Database`, private to the TOP team account.
 **Referrals** — id (`REF-20260817-001`), createdAt, ward, bed, patientName, icNo, rn, timeOfDeath, exclTransmissible, exclMalignancy, exclSepsis, exclSystemic, pledgerCard, familyApproached, staffName, contactExt, notes, status, acknowledgedBy, acknowledgedAt, outcome, refusalReason, escalationCount
 
 **Users** — username, pinHash, salt, name, role, oncall, whatsappNumber, callmebotKey, sessionToken, tokenExpiry
-
-**Education** — id, title, description, type, driveFileId, category, sortOrder, active
 
 **AuditLog** — timestamp, actor, action, referralId, detail
 
@@ -216,7 +202,6 @@ All requests `POST` JSON `{ action, token?, code?, payload }` → `{ ok: true, d
 | action | gate | purpose |
 |---|---|---|
 | `submitReferral` | none (+ wardCode if enabled) | create referral, fire alerts |
-| `getEducation` | none | list active education items |
 | `getConfigPublic` | none | ward list etc. — must not leak codes |
 | `getDashboardPublic` | dashboardCode | aggregate stats only |
 | `login` | none | returns token |
@@ -224,7 +209,6 @@ All requests `POST` JSON `{ action, token?, code?, payload }` → `{ ok: true, d
 | `updateReferral` | token | acknowledge / status / outcome |
 | `getDashboardAdmin` | token | stats + row detail |
 | `exportCsv` | token | NTRC export |
-| `manageEducation` | token | CRUD education rows |
 | `manageUsers` | token | CRUD users / roster |
 
 `getConfigPublic` returns the ward list and app labels **only**. It must never return `dashboardCode`, `wardCode`, `chatWebhookUrl`, or `alertEmails`.
@@ -248,7 +232,7 @@ Animation is in scope and wanted. Static hosting does not constrain it — the b
 | Page | Approach |
 |---|---|
 | Referral form | **Minimal and functional only.** Used one-handed, at speed, often at night, by someone who has just certified a death. Any motion that delays a tap works against the 60-second goal. No page-load flourishes, no staggered field reveals, no transition on submit beyond immediate feedback. |
-| Landing, education hub | Polish is welcome. These are read at leisure, and a credible-feeling app is what persuades ward staff to use it at all — which is the secondary goal in §2. |
+| Landing | Polish is welcome. Read at leisure, and a credible-feeling app is what persuades ward staff to use it at all. |
 | Dashboard | Chart entry animations plus restrained transitions on filter changes. |
 | Admin panel | Functional motion — status chip transitions, exit animation on acknowledge so a card leaving the inbox is visible rather than abrupt. |
 
@@ -264,9 +248,8 @@ top-team-app/
 ├── README.md                ← setup & deployment guide
 ├── robots.txt
 ├── docs/                    ← GitHub Pages root (Settings → Pages → /docs)
-│   ├── index.html           ← landing: Rujuk Kes / Edukasi / Papan Data / Admin
+│   ├── index.html           ← landing: Rujuk Kes / Papan Data / Admin
 │   ├── refer.html
-│   ├── education.html
 │   ├── dashboard.html       ← ward-code gate
 │   ├── admin.html
 │   ├── qr.html              ← printable ward poster
@@ -274,13 +257,12 @@ top-team-app/
 │   └── js/
 │       ├── config.js        ← APPS_SCRIPT_URL constant
 │       ├── api.js           ← fetch wrapper
-│       └── refer.js · education.js · dashboard.js · admin.js
+│       └── refer.js · dashboard.js · admin.js
 └── apps-script/
     ├── Code.gs              ← doGet/doPost router
     ├── Referrals.gs         ← referral logic + escalation trigger
     ├── Alerts.gs            ← sendAlert() fan-out + channel senders
     ├── Auth.gs              ← login, token validation, PIN hashing, code checks
-    ├── Education.gs
     ├── Dashboard.gs
     ├── Setup.gs             ← initializeDatabase()
     └── appsscript.json
@@ -295,7 +277,7 @@ top-team-app/
 | **1a** | `Setup.gs` + referral form + Sheet write + email alert | A phone submits a referral, a row appears, an email arrives |
 | **1b** | Google Chat webhook + WhatsApp, behind `sendAlert()` | Push notification lands on an on-call phone |
 | **2** | Auth, inbox, acknowledge, status updates, escalation trigger | Unacknowledged referral re-alerts after 15 min |
-| **3** | Education hub + admin content manager | Ward staff can watch a video from the QR link |
+| **3** | *(removed — education hub dropped; phase number retained so 4/5 stay stable)* | — |
 | **4** | Dashboard (coded) + CSV export (admin) | Monthly figures render; NTRC export downloads |
 | **5** | QR poster page, PWA manifest, dark mode, Meta Cloud API | — |
 
