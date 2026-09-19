@@ -109,6 +109,7 @@
   var caseTbody = document.getElementById('caseTbody');
   var fltSearch = document.getElementById('fltSearch');
   var fltWard = document.getElementById('fltWard');
+  var fltSort = document.getElementById('fltSort');
   var fltExc = document.getElementById('fltExc');
   // Case detail pop-out
   var detailOverlay = document.getElementById('detailOverlay');
@@ -315,6 +316,7 @@
     var s = String(name || '').trim();
     return s ? s.split(/\s+/)[0] : '';
   }
+  function dateMs(iso) { var t = Date.parse(iso || ''); return isNaN(t) ? 0 : t; }
 
   // Flag badge spans (shared by the table cell and the detail card).
   function flagBadges(f) {
@@ -375,7 +377,16 @@
         if (hay.indexOf(q) < 0) return false;
       }
       return true;
-    }).sort(function (a, b) { return urgency(a, effNow) - urgency(b, effNow); });
+    });
+
+    // Sort: 'latest' = newest referral first (by createdAt); default = urgency
+    // (soonest-closing window first).
+    var sortMode = fltSort ? fltSort.value : 'urgency';
+    if (sortMode === 'latest') {
+      rows.sort(function (a, b) { return dateMs(b.createdAt) - dateMs(a.createdAt); });
+    } else {
+      rows.sort(function (a, b) { return urgency(a, effNow) - urgency(b, effNow); });
+    }
 
     if (!rows.length) {
       caseTbody.innerHTML = '';
@@ -559,6 +570,7 @@
   // =========================================================================
   if (fltSearch) fltSearch.addEventListener('input', renderTable);
   if (fltWard) fltWard.addEventListener('change', renderTable);
+  if (fltSort) fltSort.addEventListener('change', renderTable);
   if (fltExc) fltExc.addEventListener('change', renderTable);
 
   // =========================================================================

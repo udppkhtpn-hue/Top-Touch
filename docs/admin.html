@@ -316,10 +316,14 @@
 
           <!-- Active cases — urgency countdowns -->
           <div class="ck-toolbar">
-            <span class="ck-view-label">Kes aktif — kritikal dahulu</span>
+            <span class="ck-view-label">Senarai Kes</span>
             <div class="ck-filters">
               <input type="search" id="fltSearch" placeholder="Cari wad / ID / pesakit…" autocomplete="off" aria-label="Cari kes">
               <select id="fltWard" aria-label="Tapis mengikut wad"><option value="">Semua wad</option></select>
+              <select id="fltSort" aria-label="Susun kes">
+                <option value="urgency">Susun: Keutamaan</option>
+                <option value="latest">Susun: Terkini</option>
+              </select>
               <label class="ck-check"><input type="checkbox" id="fltExc"> Pengecualian sahaja</label>
             </div>
             <span class="ck-count" id="ckCount"></span>
