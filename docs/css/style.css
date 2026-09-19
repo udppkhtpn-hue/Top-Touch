@@ -146,6 +146,18 @@ a { color: var(--green-dark); }
 .masthead .brand { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; letter-spacing: -.01em; }
 .masthead .tagline { font-size: .82rem; opacity: .9; margin-left: auto; }
 
+/* ---- Brand ticker — running marquee beneath the nav ribbon.
+   Injected by nav.js on every page that loads it EXCEPT the Rujuk Kes form
+   (kept motion-free — ~60s critical path). Decorative, so aria-hidden. ---- */
+.brand-ticker { overflow: hidden; background: var(--green-darker); color: #fff;
+  border-top: 1px solid rgba(255,255,255,.14); }
+.brand-ticker__track { display: inline-flex; white-space: nowrap; will-change: transform;
+  animation: brandTicker 45s linear infinite; }
+.brand-ticker__item { display: inline-block; padding: 6px 0; font-size: .78rem;
+  font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+@keyframes brandTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .brand-ticker__track { animation: none; } }
+
 /* ---- Top-ribbon navigation -------------------------------------------- */
 .nav-toggle {
   display: none;                 /* shown on phones only (see media query) */
