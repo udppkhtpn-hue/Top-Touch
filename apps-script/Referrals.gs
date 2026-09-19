@@ -130,7 +130,9 @@ function submitReferral(payload, code) {
       '',                               // tissueBone
       '',                               // tissueSkin
       '',                               // familyApproachedAt
-      ''                                // consentedAt
+      '',                               // consentedAt
+      '',                               // familyDiscussed    (admin response form)
+      ''                                // notDiscussedReason (admin response form)
     ];
     sheet.appendRow(row);
     SpreadsheetApp.flush(); // guarantee the write lands before releasing the lock
@@ -184,7 +186,23 @@ function submitReferral(payload, code) {
  * Admin-tier: token-gated and audited. It never touches the ward's ~60-second
  * submission path (that is submitReferral, above).
  *
- * @param {Object} payload  { id: 'REF-YYYYMMDD-NNN' }
+ * Optionally carries the family-approach decision tree the TOP team records when
+ * they attend a case (payload.response). The tree — and the columns each branch
+ * writes — is:
+ *
+ *   familyDiscussed = 'Ya'
+ *     outcome = 'Setuju'          -> tissueCornea/Bone/Skin/Valve = 'Ya' per checked;
+ *                                    familyApproachedAt + consentedAt stamped now
+ *     outcome = 'Tidak bersetuju' -> refusalReason = <one of 9>; familyApproachedAt stamped
+ *   familyDiscussed = 'Tidak'
+ *     notDiscussedReason = <one of 5>
+ *
+ * `response` is OPTIONAL: with no response object the case is simply closed
+ * (the "Tutup tanpa data" path), exactly as before — so this stays backward
+ * compatible. All writes are by column NAME via buildColIndex_, so they are
+ * safe against appended columns.
+ *
+ * @param {Object} payload  { id: 'REF-YYYYMMDD-NNN', response?: {...} }
  * @param {string} token    admin session token (validated in Auth.gs)
  * @return {Object} { ok:true, data:{ id, status } } | { ok:false, error }
  */
@@ -195,6 +213,7 @@ function respondReferral(payload, token) {
   payload = payload || {};
   var id = String(payload.id || '').trim();
   if (!id) return { ok: false, error: 'missing_id' };
+  var resp = payload.response || null;
 
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -217,13 +236,64 @@ function respondReferral(payload, token) {
       sheet.getRange(rowNum, idx.acknowledgedBy + 1).setValue(user.username || 'admin');
       sheet.getRange(rowNum, idx.acknowledgedAt + 1).setValue(new Date());
     }
+
+    // Optional decision-tree data. Written by column name so appended columns are safe.
+    if (resp) writeResponseTree_(sheet, rowNum, idx, resp);
+
     SpreadsheetApp.flush();
   } finally {
     lock.releaseLock();
   }
 
-  appendAudit_(user.username || 'admin', 'RESPOND', id, 'status=RESPONDED');
+  var auditDetail = 'status=RESPONDED';
+  if (resp) {
+    // Identifier-light audit: categorical outcome only, never patient data.
+    auditDetail += '; familyDiscussed=' + String(resp.familyDiscussed || '');
+    if (String(resp.familyDiscussed || '') === 'Ya') auditDetail += '; outcome=' + String(resp.decision || '');
+  }
+  appendAudit_(user.username || 'admin', 'RESPOND', id, auditDetail);
   return { ok: true, data: { id: id, status: 'RESPONDED' } };
+}
+
+/**
+ * Write one row's family-approach decision tree. A helper so respondReferral
+ * stays readable. Only sets a cell when idx has that column (defensive against a
+ * sheet not yet migrated) and only writes the branch that applies, leaving the
+ * other branch's columns untouched. Values are stored human-readable (Bahasa
+ * Melayu) so the CSV export reads directly.
+ */
+function writeResponseTree_(sheet, rowNum, idx, resp) {
+  function set(colName, val) {
+    if (idx[colName] === undefined) return;
+    sheet.getRange(rowNum, idx[colName] + 1).setValue(val);
+  }
+
+  var famDiscussed = String(resp.familyDiscussed || '').trim();
+  set('familyDiscussed', famDiscussed);
+
+  if (famDiscussed === 'Ya') {
+    set('familyApproachedAt', new Date());
+    var decision = String(resp.decision || '').trim();
+    set('outcome', decision);
+
+    if (decision === 'Setuju') {
+      set('consentedAt', new Date());
+      var t = resp.tissues || {};
+      set('tissueCornea', t.cornea ? 'Ya' : '');
+      set('tissueBone',   t.bone   ? 'Ya' : '');
+      set('tissueSkin',   t.skin   ? 'Ya' : '');
+      set('tissueValve',  t.valve  ? 'Ya' : '');
+      set('refusalReason', ''); // clear any stale decline reason
+    } else if (decision === 'Tidak bersetuju') {
+      set('refusalReason', String(resp.refusalReason || '').trim());
+    }
+    set('notDiscussedReason', ''); // not applicable when discussed
+  } else if (famDiscussed === 'Tidak') {
+    set('notDiscussedReason', String(resp.notDiscussedReason || '').trim());
+    // Not discussed -> no outcome / tissue / decline-reason.
+    set('outcome', '');
+    set('refusalReason', '');
+  }
 }
 
 /**

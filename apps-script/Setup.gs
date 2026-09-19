@@ -47,7 +47,14 @@ var SHEETS = {
     'tissueBone',
     'tissueSkin',
     'familyApproachedAt',  // funnel timing
-    'consentedAt'          // funnel timing
+    'consentedAt',         // funnel timing
+    // --- Response decision-tree additions (admin "Respon" form). APPENDED. ---
+    // Filled by the admin cockpit when a case is responded/closed, not the form.
+    // The rest of the tree reuses existing columns: outcome ('Setuju'/'Tidak
+    // bersetuju'), refusalReason (9-option list when declined), tissueCornea/
+    // Valve/Bone/Skin (consented tissues), familyApproachedAt, consentedAt.
+    'familyDiscussed',     // Ya/Tidak — was donation discussed with next-of-kin (waris)
+    'notDiscussedReason'   // reason not discussed (5-option list, when familyDiscussed = Tidak)
   ],
   Users: [
     'username', 'pin', 'pinHash', 'salt', 'name', 'role', 'oncall',

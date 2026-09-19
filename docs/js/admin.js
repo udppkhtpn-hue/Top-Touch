@@ -57,6 +57,28 @@
     ['JENAZAH DIPULANGKAN',   'Jenazah Dipulangkan']
   ];
 
+  // Response decision-tree reason lists (rendered as radios in the Respon modal).
+  // The stored value is the full Bahasa Melayu label, so the CSV export reads
+  // directly. "Lain-lain" reveals a free-text field whose text is stored instead.
+  var REFUSAL_REASONS = [
+    'Keluarga tidak dapat menerima kematian',
+    'Bertentangan dengan kepercayaan agama',
+    'Keluarga tidak tahu hasrat si mati',
+    'Tiada persetujuan / pendapat berbeza dalam kalangan ahli keluarga',
+    'Takut jenazah dicederakan',
+    'Bimbang pengebumian tertangguh',
+    'Tidak mahu si mati menderita lagi',
+    'Tidak dinyatakan',
+    'Lain-lain'
+  ];
+  var NOT_DISCUSSED_REASONS = [
+    'Tiada pelepasan daripada doktor utama',
+    'Kakitangan tidak selesa untuk membuat permintaan',
+    'Penderma tidak sesuai',
+    'Tiada pelepasan perundangan (medico-legal)',
+    'Tidak dapat menghubungi ahli keluarga'
+  ];
+
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---- State ----
@@ -423,8 +445,10 @@
 
   // =========================================================================
   // Respond & close — the app's single status write (token-gated, audited).
-  // A responder taps this on a card when they go to attend the case; the server
-  // sets status = RESPONDED and the case drops off the live board on the refetch.
+  // A responder taps "Respon" on a card, which opens the decision-tree modal;
+  // saving records the family-approach outcome and closes the case (server sets
+  // status = RESPONDED, so it drops off the live board on the refetch). The
+  // "Tutup tanpa data" button closes without recording (data may be blank).
   // =========================================================================
   caseList.addEventListener('click', function (e) {
     var btn = e.target && e.target.closest ? e.target.closest('.btn-respond') : null;
@@ -432,22 +456,156 @@
     var id = btn.getAttribute('data-id');
     if (!id) return;
     if (!token) { forceLogout('Sila log masuk semula.'); return; }
-    if (!window.confirm('Tutup kes ' + id + '? Ia akan ditanda sebagai telah direspons dan keluar dari papan langsung.')) return;
-    btn.disabled = true;
-    btn.textContent = 'Menutup…';
-    apiPost('respondReferral', { id: id }, { token: token })
+    openResp(id);
+  });
+
+  // =========================================================================
+  // Response decision-tree modal
+  // =========================================================================
+  var respOverlay = document.getElementById('respOverlay');
+  var respForm = document.getElementById('respForm');
+  var respTitle = document.getElementById('respTitle');
+  var respErr = document.getElementById('respErr');
+  var respSave = document.getElementById('respSave');
+  var respSkip = document.getElementById('respSkip');
+  var branchYa = document.getElementById('branchYa');
+  var branchTidak = document.getElementById('branchTidak');
+  var branchSetuju = document.getElementById('branchSetuju');
+  var branchDecline = document.getElementById('branchDecline');
+  var refusalList = document.getElementById('refusalList');
+  var notDiscussedList = document.getElementById('notDiscussedList');
+  var refusalOtherWrap = document.getElementById('refusalOtherWrap');
+  var refusalOther = document.getElementById('refusalOther');
+  var respCurrentId = '';
+
+  // Render the two reason lists as radios (single source: the arrays above).
+  function renderReasonRadios(container, name, reasons) {
+    container.innerHTML = reasons.map(function (r, i) {
+      return '<label class="resp-opt"><input type="radio" name="' + name + '" value="' +
+        esc(r) + '"> ' + esc(r) + '</label>';
+    }).join('');
+  }
+  renderReasonRadios(refusalList, 'refusal', REFUSAL_REASONS);
+  renderReasonRadios(notDiscussedList, 'notDiscussed', NOT_DISCUSSED_REASONS);
+
+  function openResp(id) {
+    respCurrentId = id;
+    respForm.reset();
+    respErr.textContent = '';
+    respSave.disabled = false; respSave.textContent = 'Simpan & tutup kes';
+    respSkip.disabled = false;
+    respTitle.textContent = 'Respons kes ' + id;
+    syncBranches();
+    respOverlay.classList.remove('ck-hidden');
+    // Focus the first control for keyboard/screen-reader users.
+    var first = respForm.querySelector('input[name="famDiscussed"]');
+    if (first) first.focus();
+  }
+
+  function closeResp() {
+    respOverlay.classList.add('ck-hidden');
+    respCurrentId = '';
+  }
+
+  // Show only the branches that apply to the current selections.
+  function syncBranches() {
+    var fam = respForm.querySelector('input[name="famDiscussed"]:checked');
+    var famVal = fam ? fam.value : '';
+    branchYa.classList.toggle('ck-hidden', famVal !== 'Ya');
+    branchTidak.classList.toggle('ck-hidden', famVal !== 'Tidak');
+
+    var dec = respForm.querySelector('input[name="decision"]:checked');
+    var decVal = (famVal === 'Ya' && dec) ? dec.value : '';
+    branchSetuju.classList.toggle('ck-hidden', decVal !== 'Setuju');
+    branchDecline.classList.toggle('ck-hidden', decVal !== 'Tidak bersetuju');
+
+    var ref = respForm.querySelector('input[name="refusal"]:checked');
+    var isOther = decVal === 'Tidak bersetuju' && ref && ref.value === 'Lain-lain';
+    refusalOtherWrap.classList.toggle('ck-hidden', !isOther);
+  }
+
+  respForm.addEventListener('change', syncBranches);
+
+  // Gather + validate the tree; returns { response } or throws with a message.
+  function collectResponse() {
+    var fam = respForm.querySelector('input[name="famDiscussed"]:checked');
+    if (!fam) throw new Error('Sila pilih sama ada pendermaan dibincangkan dengan waris.');
+    var out = { familyDiscussed: fam.value };
+
+    if (fam.value === 'Ya') {
+      var dec = respForm.querySelector('input[name="decision"]:checked');
+      if (!dec) throw new Error('Sila pilih keputusan waris.');
+      out.decision = dec.value;
+
+      if (dec.value === 'Setuju') {
+        var checks = respForm.querySelectorAll('input[name="tissue"]:checked');
+        var tissues = { cornea: false, bone: false, skin: false, valve: false };
+        for (var i = 0; i < checks.length; i++) tissues[checks[i].value] = true;
+        out.tissues = tissues;
+      } else { // Tidak bersetuju
+        var ref = respForm.querySelector('input[name="refusal"]:checked');
+        if (!ref) throw new Error('Sila pilih sebab tidak bersetuju.');
+        if (ref.value === 'Lain-lain') {
+          var other = refusalOther.value.trim();
+          if (!other) throw new Error('Sila nyatakan sebab lain.');
+          out.refusalReason = 'Lain-lain: ' + other;
+        } else {
+          out.refusalReason = ref.value;
+        }
+      }
+    } else { // Tidak dibincangkan
+      var nd = respForm.querySelector('input[name="notDiscussed"]:checked');
+      if (!nd) throw new Error('Sila pilih sebab tidak dibincangkan.');
+      out.notDiscussedReason = nd.value;
+    }
+    return out;
+  }
+
+  function submitResp(response) {
+    if (!token) { closeResp(); forceLogout('Sila log masuk semula.'); return; }
+    var id = respCurrentId;
+    respSave.disabled = true; respSkip.disabled = true;
+    respSave.textContent = 'Menyimpan…';
+    var payload = { id: id };
+    if (response) payload.response = response;
+    apiPost('respondReferral', payload, { token: token })
       .then(function (res) {
         if (!res || res.ok !== true) {
-          if (res && res.error === 'unauthorized') { forceLogout('Sesi tamat. Sila log masuk semula.'); return; }
+          if (res && res.error === 'unauthorized') { closeResp(); forceLogout('Sesi tamat. Sila log masuk semula.'); return; }
           throw new Error((res && res.error) || 'respond_error');
         }
+        closeResp();
         poll(); // refetch; the closed case is gone from getLiveCases
       })
       .catch(function () {
-        btn.disabled = false;
-        btn.textContent = 'Respon';
-        window.alert('Ralat menutup kes. Cuba lagi.');
+        respSave.disabled = false; respSkip.disabled = false;
+        respSave.textContent = 'Simpan & tutup kes';
+        respErr.textContent = 'Ralat menutup kes. Cuba lagi.';
       });
+  }
+
+  respForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    respErr.textContent = '';
+    var response;
+    try { response = collectResponse(); }
+    catch (err) { respErr.textContent = err.message; return; }
+    submitResp(response);
+  });
+
+  respSkip.addEventListener('click', function () {
+    if (!window.confirm('Tutup kes ' + respCurrentId + ' tanpa merekod keputusan? Ia akan keluar dari papan langsung.')) return;
+    respErr.textContent = '';
+    submitResp(null); // close-only, no decision-tree data
+  });
+
+  document.getElementById('respCancel').addEventListener('click', closeResp);
+  document.getElementById('respClose').addEventListener('click', closeResp);
+  respOverlay.addEventListener('click', function (e) {
+    if (e.target === respOverlay) closeResp(); // click the backdrop
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !respOverlay.classList.contains('ck-hidden')) closeResp();
   });
 
   // =========================================================================

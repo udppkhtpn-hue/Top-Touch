@@ -154,6 +154,40 @@
       border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-size: .95rem; }
     .ntrc-status { font-size: .84rem; color: var(--muted); margin-top: 10px; min-height: 1.2em; }
 
+    /* ---- Response decision-tree modal (opened by "Respon" on a case card) ---- */
+    .resp-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-start;
+      justify-content: center; padding: 24px 16px; background: rgba(17,24,20,.55);
+      overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .resp-modal { width: 100%; max-width: 560px; background: var(--white); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 20px 22px 22px; margin: auto 0; }
+    .resp-head { display: flex; align-items: baseline; gap: 12px; }
+    .resp-head h2 { margin: 0; font-size: 1.25rem; }
+    .resp-x { margin-left: auto; background: none; border: 0; font-size: 1.7rem; line-height: 1;
+      color: var(--muted); cursor: pointer; padding: 0 4px; }
+    .resp-x:hover { color: var(--ink); }
+    .resp-sub { color: var(--muted); font-size: .86rem; margin: 4px 0 16px; }
+    .resp-fs { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px;
+      margin: 0 0 14px; }
+    .resp-fs legend { font-weight: 700; font-size: .92rem; padding: 0 6px; }
+    .resp-opts { display: flex; flex-wrap: wrap; gap: 10px 20px; }
+    .resp-checks, .resp-radios { display: grid; gap: 9px; }
+    .resp-opt { display: flex; align-items: flex-start; gap: 9px; font-size: .92rem; cursor: pointer;
+      line-height: 1.35; }
+    .resp-opt input { width: 18px; height: 18px; accent-color: var(--green); flex: none; margin-top: 1px; }
+    .resp-branch { animation: respIn .2s ease; }
+    @keyframes respIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .resp-other { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; font-size: .84rem;
+      font-weight: 600; color: var(--muted); }
+    .resp-other input { height: 42px; padding: 0 10px; border: 1px solid var(--line);
+      border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-size: .95rem; }
+    .resp-err { color: var(--danger); font-weight: 600; font-size: .86rem; min-height: 1.2em; margin: 2px 0 8px; }
+    .resp-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+    @media (prefers-reduced-motion: reduce) { .resp-branch { animation: none; } }
+    @media (max-width: 480px) {
+      .resp-actions { flex-direction: column-reverse; }
+      .resp-actions .btn { width: 100%; }
+    }
+
     .ck-hidden { display: none !important; }
     .privacy-foot { margin: 24px 0 10px; padding: 12px 14px; background: var(--green-tint);
       border-radius: var(--radius-sm); font-size: .8rem; color: var(--green-darker); }
@@ -282,6 +316,77 @@
       </div>
     </footer>
   </main>
+
+  <!-- Response decision-tree modal — opened by "Respon" on a case card.
+       Records the family-approach outcome, then closes the case. Branches are
+       shown/hidden by admin.js as the radios change; the two reason lists are
+       rendered into #refusalList / #notDiscussedList by admin.js. -->
+  <div class="resp-overlay ck-hidden" id="respOverlay" role="dialog" aria-modal="true" aria-labelledby="respTitle">
+    <div class="resp-modal">
+      <div class="resp-head">
+        <h2 id="respTitle">Respons kes</h2>
+        <button type="button" class="resp-x" id="respClose" aria-label="Tutup">&times;</button>
+      </div>
+      <p class="resp-sub" id="respSub">Rekod keputusan pendekatan keluarga sebelum menutup kes.</p>
+
+      <form id="respForm" autocomplete="off">
+        <!-- Q1 — was donation discussed with next-of-kin (waris)? -->
+        <fieldset class="resp-fs">
+          <legend>Pendermaan tisu/organ dibincangkan dengan waris?</legend>
+          <div class="resp-opts">
+            <label class="resp-opt"><input type="radio" name="famDiscussed" value="Ya"> Ya</label>
+            <label class="resp-opt"><input type="radio" name="famDiscussed" value="Tidak"> Tidak</label>
+          </div>
+        </fieldset>
+
+        <!-- Branch: Ya -> keputusan waris -->
+        <div class="resp-branch ck-hidden" id="branchYa">
+          <fieldset class="resp-fs">
+            <legend>Keputusan waris</legend>
+            <div class="resp-opts">
+              <label class="resp-opt"><input type="radio" name="decision" value="Setuju"> Setuju</label>
+              <label class="resp-opt"><input type="radio" name="decision" value="Tidak bersetuju"> Tidak bersetuju</label>
+            </div>
+          </fieldset>
+
+          <!-- Branch: Setuju -> tisu yang didermakan -->
+          <fieldset class="resp-fs resp-branch ck-hidden" id="branchSetuju">
+            <legend>Tisu yang didermakan</legend>
+            <div class="resp-checks">
+              <label class="resp-opt"><input type="checkbox" name="tissue" value="cornea"> Kornea mata</label>
+              <label class="resp-opt"><input type="checkbox" name="tissue" value="bone"> Tulang</label>
+              <label class="resp-opt"><input type="checkbox" name="tissue" value="skin"> Kulit</label>
+              <label class="resp-opt"><input type="checkbox" name="tissue" value="valve"> Injap jantung</label>
+            </div>
+          </fieldset>
+
+          <!-- Branch: Tidak bersetuju -> sebab tidak bersetuju -->
+          <fieldset class="resp-fs resp-branch ck-hidden" id="branchDecline">
+            <legend>Sebab tidak bersetuju</legend>
+            <div class="resp-radios" id="refusalList"></div>
+            <label class="resp-other ck-hidden" id="refusalOtherWrap">
+              Nyatakan sebab lain:
+              <input type="text" id="refusalOther" maxlength="200" placeholder="Sebab lain">
+            </label>
+          </fieldset>
+        </div>
+
+        <!-- Branch: Tidak -> sebab tidak dibincangkan -->
+        <fieldset class="resp-fs resp-branch ck-hidden" id="branchTidak">
+          <legend>Sebab tidak dibincangkan</legend>
+          <div class="resp-radios" id="notDiscussedList"></div>
+        </fieldset>
+
+        <div class="resp-err" id="respErr"></div>
+
+        <div class="resp-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="respCancel">Batal</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="respSkip">Tutup tanpa data</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="respSave">Simpan &amp; tutup kes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script defer src="js/config.js"></script>
   <script defer src="js/api.js"></script>
