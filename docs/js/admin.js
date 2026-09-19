@@ -120,7 +120,7 @@
     var prev = gateBtn.textContent;
     gateBtn.textContent = 'Menyemak…';
 
-    apiPost('login', { username: username, pin: pin })
+    apiPost('login', { username: username, pin: pin }, null, { retries: 2 })
       .then(function (res) {
         if (!res || res.ok !== true) {
           var lm = res && res.error === 'invalid_credentials'
@@ -173,7 +173,7 @@
   btnLogout.addEventListener('click', function () {
     var t = token;
     forceLogout('');
-    if (t) apiPost('logout', {}, { token: t }).catch(function () {}); // best-effort
+    if (t) apiPost('logout', {}, { token: t }, { retries: 1 }).catch(function () {}); // best-effort
   });
 
   btnRefresh.addEventListener('click', function () { poll(); });
@@ -188,7 +188,7 @@
     var status = document.getElementById('expStatus').value;
     btnExport.disabled = true;
     expStatusMsg.textContent = 'Menyediakan eksport…';
-    apiPost('exportCsv', { from: from, to: to, status: status }, { token: token })
+    apiPost('exportCsv', { from: from, to: to, status: status }, { token: token }, { retries: 2 })
       .then(function (res) {
         if (!res || res.ok !== true) {
           if (res && res.error === 'unauthorized') { forceLogout('Sesi tamat. Sila log masuk semula.'); return; }
@@ -229,7 +229,7 @@
     if (!token) return;
     liveInd.classList.add('polling');
     liveTxt.textContent = 'Mengemas kini…';
-    apiPost('getLiveCases', {}, { token: token })
+    apiPost('getLiveCases', {}, { token: token }, { retries: 2 })
       .then(function (res) {
         if (!res || res.ok !== true) {
           if (res && res.error === 'unauthorized') {
@@ -568,7 +568,7 @@
     respSave.textContent = 'Menyimpan…';
     var payload = { id: id };
     if (response) payload.response = response;
-    apiPost('respondReferral', payload, { token: token })
+    apiPost('respondReferral', payload, { token: token }, { retries: 2 })
       .then(function (res) {
         if (!res || res.ok !== true) {
           if (res && res.error === 'unauthorized') { closeResp(); forceLogout('Sesi tamat. Sila log masuk semula.'); return; }
