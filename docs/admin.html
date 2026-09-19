@@ -71,8 +71,8 @@
 
     /* ---- Toolbar (section label + active-case count) ---- */
     .ck-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
-    .ck-view-label { font-weight: 700; font-size: .98rem; }
-    .ck-count { margin-left: auto; font-size: .82rem; color: var(--muted); }
+    .ck-view-label { font-weight: 700; font-size: .98rem; order: 1; }
+    .ck-count { margin-left: auto; font-size: .82rem; color: var(--muted); order: 2; }
 
     /* ---- Case card (shared by both views) ---- */
     .case-card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
@@ -155,14 +155,19 @@
     .ntrc-status { font-size: .84rem; color: var(--muted); margin-top: 10px; min-height: 1.2em; }
 
     /* ---- Filter bar + case table ---- */
-    .ck-filters { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
-    .ck-filters input[type="search"], .ck-filters select { height: 40px; padding: 0 10px;
-      border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface);
-      color: var(--ink); font-size: .9rem; }
-    .ck-filters input[type="search"] { min-width: 200px; flex: 1 1 200px; }
+    /* Filters get their own full-width row (order:3) so all controls sit on one
+       line beneath the label/count; they shrink to fit and only wrap on phones. */
+    .ck-filters { order: 3; flex: 1 1 100%; display: flex; flex-wrap: nowrap;
+      gap: 8px 10px; align-items: center; }
+    .ck-filters input[type="search"], .ck-filters select { height: 40px; min-height: 40px;
+      width: auto; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+      background: var(--surface); color: var(--ink); font-size: .9rem; }
+    .ck-filters input[type="search"] { flex: 1 1 120px; min-width: 100px; }
+    .ck-filters select { flex: 0 1 auto; min-width: 0; }
     .ck-check { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem;
-      color: var(--muted); white-space: nowrap; cursor: pointer; }
+      color: var(--muted); white-space: nowrap; cursor: pointer; flex: 0 0 auto; }
     .ck-check input { width: 16px; height: 16px; accent-color: var(--green); }
+    @media (max-width: 560px) { .ck-filters { flex-wrap: wrap; } }
 
     .case-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius);
       background: var(--white); box-shadow: var(--shadow-sm); }
