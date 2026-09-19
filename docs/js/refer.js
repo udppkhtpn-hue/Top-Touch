@@ -191,6 +191,7 @@
       exclSystemic: segValue('exclSystemic'),
       pledgerCard: segValue('pledgerCard'),
       familyApproached: segValue('familyApproached'),
+      medicoLegal: segValue('medicoLegal'),
       staffName: document.getElementById('staffName').value.trim(),
       contactExt: document.getElementById('contactExt').value.trim(),
       notes: document.getElementById('notes').value.trim(),
@@ -201,7 +202,7 @@
     // Client-side required check (mirrors server). IC format is NOT enforced.
     var required = ['ward', 'bed', 'patientName', 'icNo', 'rn', 'timeOfDeath',
       'exclTransmissible', 'exclMalignancy', 'exclSepsis', 'exclSystemic',
-      'pledgerCard', 'familyApproached', 'staffName', 'contactExt'];
+      'pledgerCard', 'familyApproached', 'medicoLegal', 'staffName', 'contactExt'];
     var missing = required.filter(function (k) { return !payload[k]; });
     if (missing.length) {
       showError('Sila lengkapkan semua ruangan bertanda * (' + missing.length + ' belum diisi).');

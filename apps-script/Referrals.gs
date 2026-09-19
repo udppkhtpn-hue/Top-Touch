@@ -20,7 +20,7 @@
 var REQUIRED_REFERRAL_FIELDS = [
   'ward', 'bed', 'patientName', 'icNo', 'rn', 'timeOfDeath',
   'exclTransmissible', 'exclMalignancy', 'exclSepsis', 'exclSystemic',
-  'pledgerCard', 'familyApproached', 'staffName', 'contactExt'
+  'pledgerCard', 'familyApproached', 'medicoLegal', 'staffName', 'contactExt'
 ];
 
 /**
@@ -117,7 +117,7 @@ function submitReferral(payload, code) {
       // .Referrals in Setup.gs exactly.
       '',                               // bloodTakenAt
       '',                               // serologyResultAt
-      '',                               // medicoLegal
+      payload.medicoLegal || '',        // medicoLegal (now set by the ward at referral)
       '',                               // teamAlertedOphthal
       '',                               // teamAlertedOrtho
       '',                               // teamAlertedPlastic
@@ -161,6 +161,7 @@ function submitReferral(payload, code) {
       exclSystemic: payload.exclSystemic,
       pledgerCard: payload.pledgerCard,
       familyApproached: payload.familyApproached,
+      medicoLegal: payload.medicoLegal,
       staffName: payload.staffName,
       contactExt: payload.contactExt,
       notes: payload.notes || ''
@@ -352,6 +353,7 @@ function testSubmitReferral() {
     exclSystemic: 'Tidak',
     pledgerCard: 'Tidak pasti',
     familyApproached: 'Belum',
+    medicoLegal: 'Tidak pasti',
     staffName: 'Jururawat Siti (UJIAN)',
     contactExt: 'ext 2345',
     notes: 'Ini adalah submission UJIAN — sila abaikan.'

@@ -168,7 +168,8 @@ function buildAlertMessage_(referral, config, isEscalation) {
     '',
     'Skrin eksklusi: ' + flags,
     'Kad pledger: ' + (referral.pledgerCard || '-') +
-      '  |  Keluarga: ' + (referral.familyApproached || '-'),
+      '  |  Keluarga ditanya: ' + (referral.familyApproached || '-'),
+    'Kes medikolegal: ' + (referral.medicoLegal || '-'),
     (referral.notes ? ('Nota: ' + referral.notes) : null),
     '',
     'Hubungi: ' + referral.staffName + ' (' + referral.contactExt + ')',
@@ -251,6 +252,7 @@ function sampleReferral_() {
     exclSystemic: 'Tidak',
     pledgerCard: 'Tidak pasti',
     familyApproached: 'Belum',
+    medicoLegal: 'Tidak pasti',
     staffName: 'Jururawat Siti (UJIAN)',
     contactExt: 'ext 2345'
   };
