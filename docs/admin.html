@@ -135,6 +135,14 @@
     .btn-respond:hover { background: var(--green-dark); }
     .btn-respond:disabled { opacity: .6; cursor: default; }
     .btn-respond:focus-visible { outline: 2px solid var(--green-darker); outline-offset: 2px; }
+    /* Compact, blinking Respon button in the Status column (unacknowledged cases). */
+    .btn-respond--blink { min-height: 32px; padding: 5px 14px; font-size: .8rem;
+      animation: respondBlink 1.15s ease-in-out infinite; }
+    @keyframes respondBlink {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(27,122,67,.55); opacity: 1; }
+      50%      { box-shadow: 0 0 0 7px rgba(27,122,67,0); opacity: .7; }
+    }
+    @media (prefers-reduced-motion: reduce) { .btn-respond--blink { animation: none; } }
 
     .ck-empty { text-align: center; color: var(--muted); padding: 48px 0; }
 
@@ -344,7 +352,7 @@
                     <th>Pesakit</th>
                     <th>Berlalu</th>
                     <th>Keutamaan</th>
-                    <th class="ct-hide-sm">Isyarat</th>
+                    <th class="ct-hide-sm">Status</th>
                   </tr>
                 </thead>
                 <tbody id="caseTbody"></tbody>

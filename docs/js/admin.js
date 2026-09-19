@@ -40,7 +40,6 @@
   // Exceptions strip (C3). severity drives the accent colour.
   var EXCEPTIONS = [
     { key: 'unackEscalated',  label: 'Belum diakui — melepasi masa eskalasi', sev: 'hot' },
-    { key: 'serologyOverdue', label: 'Serologi lewat — >1j tiada keputusan',  sev: 'hot' },
     { key: 'exclAny',         label: 'Kriteria pengecualian = Ya — menunggu semakan TOP', sev: 'warn' },
     { key: 'medicoLegal',     label: 'Kes perundangan (medico-legal) belum dilepaskan',   sev: 'warn' }
   ];
@@ -322,13 +321,25 @@
   function flagBadges(f) {
     f = f || {};
     var badges = [];
-    if (f.unackEscalated) badges.push(['badge-hot', 'Belum diakui']);
-    if (f.serologyOverdue) badges.push(['badge-hot', 'Serologi lewat']);
-    if (f.exclAny) badges.push(['badge-warn', 'Pengecualian']);
+    if (f.exclAny) badges.push(['badge-warn', 'Ada pengecualian']);
     if (f.medicoLegal) badges.push(['badge-warn', 'Medico-legal']);
     return badges.map(function (b) {
       return '<span class="badge ' + b[0] + '">' + esc(b[1]) + '</span>';
     }).join('');
+  }
+
+  // Status column cell: an unacknowledged case shows a blinking green Respon
+  // button (the app's single status write); plus any flag badges. There is no
+  // serology-result tracking, so no serology signal is shown.
+  function statusCell(c) {
+    var f = c.flags || {};
+    var html = '';
+    if (f.unackEscalated) {
+      html += '<button type="button" class="btn-respond btn-respond--blink" data-id="' +
+        esc(c.id || '') + '">Respon</button>';
+    }
+    html += flagBadges(f);
+    return html;
   }
 
   // Rebuild the ward filter <option>s from the current cases, preserving selection.
@@ -351,7 +362,7 @@
       '<td>' + patientBits(c) + '</td>' +
       '<td class="ct-elapsed">—</td>' +
       '<td class="ct-urgency">—</td>' +
-      '<td class="ct-flags ct-hide-sm">' + flagBadges(c.flags) + '</td>' +
+      '<td class="ct-flags ct-hide-sm">' + statusCell(c) + '</td>' +
       '</tr>';
   }
 
@@ -579,6 +590,17 @@
   // modal below (which records the outcome and closes the case).
   // =========================================================================
   caseTbody.addEventListener('click', function (e) {
+    // A Respon button in the Status column opens the decision-tree modal directly
+    // (and must not also open the row's detail pop-out).
+    var btn = e.target && e.target.closest ? e.target.closest('.btn-respond') : null;
+    if (btn) {
+      e.stopPropagation();
+      var bid = btn.getAttribute('data-id');
+      if (!bid) return;
+      if (!token) { forceLogout('Sila log masuk semula.'); return; }
+      openResp(bid);
+      return;
+    }
     var tr = e.target && e.target.closest ? e.target.closest('tr[data-id]') : null;
     if (!tr) return;
     var id = tr.getAttribute('data-id');
