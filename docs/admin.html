@@ -154,6 +154,54 @@
       border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-size: .95rem; }
     .ntrc-status { font-size: .84rem; color: var(--muted); margin-top: 10px; min-height: 1.2em; }
 
+    /* ---- Filter bar + case table ---- */
+    .ck-filters { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+    .ck-filters input[type="search"], .ck-filters select { height: 40px; padding: 0 10px;
+      border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface);
+      color: var(--ink); font-size: .9rem; }
+    .ck-filters input[type="search"] { min-width: 200px; flex: 1 1 200px; }
+    .ck-check { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem;
+      color: var(--muted); white-space: nowrap; cursor: pointer; }
+    .ck-check input { width: 16px; height: 16px; accent-color: var(--green); }
+
+    .case-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--white); box-shadow: var(--shadow-sm); }
+    .case-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    .case-table thead th { text-align: left; font-size: .72rem; text-transform: uppercase;
+      letter-spacing: .04em; color: var(--muted); font-weight: 700; padding: 10px 12px;
+      border-bottom: 1px solid var(--line); white-space: nowrap; }
+    .case-table tbody tr { border-bottom: 1px solid var(--line); cursor: pointer;
+      transition: background .15s ease; }
+    .case-table tbody tr:last-child { border-bottom: 0; }
+    .case-table tbody tr:hover { background: var(--green-tint); }
+    .case-table td { padding: 10px 12px; vertical-align: middle; }
+    .ct-id { font-variant-numeric: tabular-nums; font-size: .8rem; color: var(--muted); white-space: nowrap; }
+    .ct-ward { font-weight: 700; }
+    .ct-bed { color: var(--muted); font-size: .82rem; }
+    .ct-elapsed, .ct-urgency { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ct-urgency.win-hot { color: var(--danger); font-weight: 700; }
+    .ct-urgency.win-warn { color: var(--amber); font-weight: 700; }
+    .ct-urgency.win-ok { color: var(--green-dark); }
+    .ct-flags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .case-table .case-idbits { margin: 0; }
+    .case-table .badge { font-size: .68rem; padding: 2px 7px; }
+    @media (max-width: 620px) { .ct-hide-sm { display: none; } }
+
+    /* ---- Case detail pop-out extras (reuses .resp-overlay / .resp-modal) ---- */
+    .detail-modal { max-width: 640px; }
+    .detail-modal .case-card { border: 1px solid var(--line); }
+    .detail-section { margin-top: 18px; }
+    .detail-section h3 { font-size: .95rem; margin: 0 0 10px; }
+    .detail-grid { display: grid; grid-template-columns: max-content 1fr; gap: 7px 16px;
+      font-size: .9rem; align-items: baseline; }
+    .detail-grid dt { color: var(--muted); font-weight: 600; }
+    .detail-grid dd { margin: 0; word-break: break-word; }
+    .detail-grid dd.excl-yes { color: var(--danger); font-weight: 700; }
+    @media (max-width: 480px) {
+      .detail-grid { grid-template-columns: 1fr; gap: 2px 0; }
+      .detail-grid dd { margin: 0 0 8px; }
+    }
+
     /* ---- Response decision-tree modal (opened by "Respon" on a case card) ---- */
     .resp-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-start;
       justify-content: center; padding: 24px 16px; background: rgba(17,24,20,.55);
@@ -268,12 +316,31 @@
 
           <!-- Active cases — urgency countdowns -->
           <div class="ck-toolbar">
-            <span class="ck-view-label">Keutamaan — kritikal dahulu</span>
+            <span class="ck-view-label">Kes aktif — kritikal dahulu</span>
+            <div class="ck-filters">
+              <input type="search" id="fltSearch" placeholder="Cari wad / ID / pesakit…" autocomplete="off" aria-label="Cari kes">
+              <select id="fltWard" aria-label="Tapis mengikut wad"><option value="">Semua wad</option></select>
+              <label class="ck-check"><input type="checkbox" id="fltExc"> Pengecualian sahaja</label>
+            </div>
             <span class="ck-count" id="ckCount"></span>
           </div>
 
           <div id="paneUrgency">
-            <div class="case-list" id="caseList"></div>
+            <div class="case-table-wrap">
+              <table class="case-table" id="caseTable">
+                <thead>
+                  <tr>
+                    <th>Kes</th>
+                    <th>Wad / Katil</th>
+                    <th>Pesakit</th>
+                    <th>Berlalu</th>
+                    <th>Keutamaan</th>
+                    <th class="ct-hide-sm">Isyarat</th>
+                  </tr>
+                </thead>
+                <tbody id="caseTbody"></tbody>
+              </table>
+            </div>
             <div class="ck-empty ck-hidden" id="emptyUrgency">Tiada kes aktif buat masa ini.</div>
           </div>
 
@@ -316,6 +383,18 @@
       </div>
     </footer>
   </main>
+
+  <!-- Case detail pop-out — full Rujuk Kes detail + live windows + Respon.
+       Opened by clicking a row in the case table (admin.js openDetail). -->
+  <div class="resp-overlay ck-hidden" id="detailOverlay" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <div class="resp-modal detail-modal">
+      <div class="resp-head">
+        <h2 id="detailTitle">Butiran kes</h2>
+        <button type="button" class="resp-x" id="detailClose" aria-label="Tutup">&times;</button>
+      </div>
+      <div id="detailBody"></div>
+    </div>
+  </div>
 
   <!-- Response decision-tree modal — opened by "Respon" on a case card.
        Records the family-approach outcome, then closes the case. Branches are

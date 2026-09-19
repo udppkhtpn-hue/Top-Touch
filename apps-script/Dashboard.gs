@@ -240,9 +240,23 @@ function getLiveCases(token) {
       bed: String(r[idx.bed] || ''),
       patientName: String(r[idx.patientName] || ''),
       icNo: String(r[idx.icNo] || ''),
+      rn: String(r[idx.rn] || ''),
+      createdAt: createdAt ? toIso_(createdAt) : '',
       timeOfDeath: tod ? toIso_(tod) : '',
       elapsedMin: elapsedMin,
       phase: String(r[idx.phase] || status),
+      // Full referral detail (admin tier only — token-gated + audited, SPEC §4).
+      // Surfaced in the cockpit's per-case detail pop-out.
+      exclTransmissible: String(r[idx.exclTransmissible] || ''),
+      exclMalignancy: String(r[idx.exclMalignancy] || ''),
+      exclSepsis: String(r[idx.exclSepsis] || ''),
+      exclSystemic: String(r[idx.exclSystemic] || ''),
+      pledgerCard: String(r[idx.pledgerCard] || ''),
+      familyApproached: String(r[idx.familyApproached] || ''),
+      medicoLegalRaw: String(r[idx.medicoLegal] || ''),
+      staffName: String(r[idx.staffName] || ''),
+      contactExt: String(r[idx.contactExt] || ''),
+      notes: String(r[idx.notes] || ''),
       windows: {
         serology: windowStatus_(WINDOW_SEROLOGY_MIN, elapsedMin, bloodTaken !== null),
         cornea: windowStatus_(WINDOW_CORNEA_MIN, elapsedMin, isAffirmative_(r[idx.tissueCornea])),

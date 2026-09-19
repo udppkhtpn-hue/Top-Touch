@@ -103,9 +103,19 @@
   var btnLogout = document.getElementById('btnLogout');
   var oncallList = document.getElementById('oncallList');
   var excStrip = document.getElementById('excStrip');
-  var caseList = document.getElementById('caseList');
   var emptyUrgency = document.getElementById('emptyUrgency');
   var paneUrgency = document.getElementById('paneUrgency');
+  // Case table + filters
+  var caseTbody = document.getElementById('caseTbody');
+  var fltSearch = document.getElementById('fltSearch');
+  var fltWard = document.getElementById('fltWard');
+  var fltExc = document.getElementById('fltExc');
+  // Case detail pop-out
+  var detailOverlay = document.getElementById('detailOverlay');
+  var detailTitle = document.getElementById('detailTitle');
+  var detailBody = document.getElementById('detailBody');
+  var detailClose = document.getElementById('detailClose');
+  var casesById = {};        // id -> case object, rebuilt each render (for tick + detail)
 
   // =========================================================================
   // Login
@@ -262,7 +272,7 @@
 
     renderOncall(lastData.oncall || []);
     renderExceptions(cases);
-    renderUrgency(cases);
+    renderTable();
     refreshAll(); // populate countdowns immediately (no blank first second)
   }
 
@@ -296,17 +306,88 @@
     }).join('');
   }
 
-  // ---- Urgency (countdown) view ----
-  function renderUrgency(cases) {
+  // ---- Filterable case table ----
+  function hasAnyFlag(c) {
+    var f = c.flags || {};
+    return !!(f.unackEscalated || f.serologyOverdue || f.exclAny || f.medicoLegal);
+  }
+  function firstName(name) {
+    var s = String(name || '').trim();
+    return s ? s.split(/\s+/)[0] : '';
+  }
+
+  // Flag badge spans (shared by the table cell and the detail card).
+  function flagBadges(f) {
+    f = f || {};
+    var badges = [];
+    if (f.unackEscalated) badges.push(['badge-hot', 'Belum diakui']);
+    if (f.serologyOverdue) badges.push(['badge-hot', 'Serologi lewat']);
+    if (f.exclAny) badges.push(['badge-warn', 'Pengecualian']);
+    if (f.medicoLegal) badges.push(['badge-warn', 'Medico-legal']);
+    return badges.map(function (b) {
+      return '<span class="badge ' + b[0] + '">' + esc(b[1]) + '</span>';
+    }).join('');
+  }
+
+  // Rebuild the ward filter <option>s from the current cases, preserving selection.
+  function populateWardFilter(cases) {
+    var seen = {};
+    cases.forEach(function (c) { if (c.ward) seen[c.ward] = 1; });
+    var list = Object.keys(seen).sort();
+    var cur = fltWard.value;
+    var html = '<option value="">Semua wad</option>' +
+      list.map(function (w) { return '<option value="' + esc(w) + '">' + esc(w) + '</option>'; }).join('');
+    if (fltWard.innerHTML !== html) fltWard.innerHTML = html;
+    fltWard.value = (list.indexOf(cur) >= 0) ? cur : '';
+  }
+
+  function rowHtml(c) {
+    var bed = c.bed ? ' <span class="ct-bed">Katil ' + esc(c.bed) + '</span>' : '';
+    return '<tr data-id="' + esc(c.id || '') + '">' +
+      '<td class="ct-id">' + esc(c.id || '') + '</td>' +
+      '<td><span class="ct-ward">' + esc(c.ward || '—') + '</span>' + bed + '</td>' +
+      '<td>' + patientBits(c) + '</td>' +
+      '<td class="ct-elapsed">—</td>' +
+      '<td class="ct-urgency">—</td>' +
+      '<td class="ct-flags ct-hide-sm">' + flagBadges(c.flags) + '</td>' +
+      '</tr>';
+  }
+
+  // Render the table from lastData + the current filter controls. Called on each
+  // poll (render) and whenever a filter changes (no refetch).
+  function renderTable() {
+    var cases = (lastData && lastData.cases) || [];
+    casesById = {};
+    cases.forEach(function (c) { casesById[c.id] = c; });
+
+    populateWardFilter(cases);
+
+    var q = (fltSearch.value || '').trim().toLowerCase();
+    var wardF = fltWard.value || '';
+    var excOnly = !!fltExc.checked;
     var effNow = Date.now() + clockOffset;
-    var sorted = cases.slice().sort(function (a, b) { return urgency(a, effNow) - urgency(b, effNow); });
-    if (!sorted.length) {
-      caseList.innerHTML = '';
+
+    var rows = cases.filter(function (c) {
+      if (wardF && c.ward !== wardF) return false;
+      if (excOnly && !hasAnyFlag(c)) return false;
+      if (q) {
+        var hay = (c.ward + ' ' + c.bed + ' ' + c.id + ' ' + firstName(c.patientName)).toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    }).sort(function (a, b) { return urgency(a, effNow) - urgency(b, effNow); });
+
+    if (!rows.length) {
+      caseTbody.innerHTML = '';
       emptyUrgency.classList.remove('ck-hidden');
+      emptyUrgency.textContent = cases.length
+        ? 'Tiada kes sepadan dengan tapisan.'
+        : 'Tiada kes aktif buat masa ini.';
       return;
     }
     emptyUrgency.classList.add('ck-hidden');
-    caseList.innerHTML = sorted.map(function (c) { return caseCard(c); }).join('');
+    caseTbody.innerHTML = rows.map(rowHtml).join('');
+    refreshAll(); // fill elapsed/urgency immediately
   }
 
   // ---- Case card ----
@@ -323,15 +404,8 @@
         '<span class="win-remain">—</span></div>';
     }).join('');
 
-    var f = c.flags || {};
-    var badges = [];
-    if (f.unackEscalated) badges.push(['badge-hot', 'Belum diakui']);
-    if (f.serologyOverdue) badges.push(['badge-hot', 'Serologi lewat']);
-    if (f.exclAny) badges.push(['badge-warn', 'Pengecualian = Ya']);
-    if (f.medicoLegal) badges.push(['badge-warn', 'Medico-legal']);
-    var badgesHtml = badges.length ? '<div class="case-badges">' +
-      badges.map(function (b) { return '<span class="badge ' + b[0] + '">' + esc(b[1]) + '</span>'; }).join('') +
-      '</div>' : '';
+    var bhtml = flagBadges(c.flags);
+    var badgesHtml = bhtml ? '<div class="case-badges">' + bhtml + '</div>' : '';
 
     var idHtml = patientBits(c);
 
@@ -390,8 +464,45 @@
   // =========================================================================
   function refreshAll() {
     var effNow = Date.now() + clockOffset;
-    var cards = paneUrgency.querySelectorAll('.case-card');
-    for (var i = 0; i < cards.length; i++) updateCard(cards[i], effNow);
+    // Table rows: elapsed + soonest-window countdown.
+    var trs = caseTbody.querySelectorAll('tr[data-id]');
+    for (var i = 0; i < trs.length; i++) updateRow(trs[i], effNow);
+    // The open detail pop-out's case card (full window bars).
+    if (!detailOverlay.classList.contains('ck-hidden')) {
+      var card = detailOverlay.querySelector('.case-card');
+      if (card) updateCard(card, effNow);
+    }
+  }
+
+  // Update one table row's elapsed + soonest-unresolved-window cells.
+  function updateRow(tr, effNow) {
+    var c = casesById[tr.getAttribute('data-id')];
+    if (!c) return;
+    var eCell = tr.querySelector('.ct-elapsed');
+    var uCell = tr.querySelector('.ct-urgency');
+    var tod = Date.parse(c.timeOfDeath || '');
+    if (isNaN(tod)) {
+      if (eCell) eCell.textContent = '—';
+      if (uCell) { uCell.textContent = '—'; uCell.className = 'ct-urgency'; }
+      return;
+    }
+    var elapsedMin = Math.floor((effNow - tod) / 60000);
+    if (eCell) eCell.textContent = fmtDur(elapsedMin);
+
+    var best = null; // soonest unresolved window
+    for (var i = 0; i < WINDOWS.length; i++) {
+      var w = WINDOWS[i];
+      var srv = (c.windows && c.windows[w.key]) || {};
+      if (srv.resolved) continue;
+      var rem = w.limitMin - elapsedMin;
+      if (best === null || rem < best.rem) best = { rem: rem, limit: w.limitMin, name: w.name };
+    }
+    uCell.className = 'ct-urgency';
+    if (!best) { uCell.textContent = 'Selesai'; return; }
+    var frac = best.rem / best.limit;
+    var state = (best.rem <= 0 || frac < 0.25) ? 'win-hot' : (frac < 0.5 ? 'win-warn' : 'win-ok');
+    uCell.classList.add(state);
+    uCell.textContent = fmtRemain(best.rem) + ' · ' + best.name;
   }
 
   function updateCard(card, effNow) {
@@ -444,19 +555,81 @@
   }
 
   // =========================================================================
-  // Respond & close — the app's single status write (token-gated, audited).
-  // A responder taps "Respon" on a card, which opens the decision-tree modal;
-  // saving records the family-approach outcome and closes the case (server sets
-  // status = RESPONDED, so it drops off the live board on the refetch). The
-  // "Tutup tanpa data" button closes without recording (data may be blank).
+  // Filters — re-render the table (no refetch) as the controls change.
   // =========================================================================
-  caseList.addEventListener('click', function (e) {
+  if (fltSearch) fltSearch.addEventListener('input', renderTable);
+  if (fltWard) fltWard.addEventListener('change', renderTable);
+  if (fltExc) fltExc.addEventListener('change', renderTable);
+
+  // =========================================================================
+  // Case detail pop-out — full Rujuk Kes detail + live windows + Respon.
+  // Opened by clicking a table row; its "Respon" button opens the decision-tree
+  // modal below (which records the outcome and closes the case).
+  // =========================================================================
+  caseTbody.addEventListener('click', function (e) {
+    var tr = e.target && e.target.closest ? e.target.closest('tr[data-id]') : null;
+    if (!tr) return;
+    var id = tr.getAttribute('data-id');
+    if (id) openDetail(id);
+  });
+
+  function openDetail(id) {
+    var c = casesById[id];
+    if (!c) return;
+    detailTitle.textContent = 'Kes ' + id;
+    detailBody.innerHTML = caseCard(c) + detailInfoHtml(c);
+    detailOverlay.classList.remove('ck-hidden');
+    refreshAll(); // fill the card's countdowns immediately
+  }
+
+  function closeDetail() { detailOverlay.classList.add('ck-hidden'); }
+
+  // Full referral detail (admin tier — token-gated + audited, so full name/IC
+  // are shown here, as in the CSV export). Exclusion "Ya" answers are highlighted.
+  function detailInfoHtml(c) {
+    function esc2(v) { return esc(v == null || v === '' ? '—' : v); }
+    function row(k, v) { return '<dt>' + esc(k) + '</dt><dd>' + esc2(v) + '</dd>'; }
+    function exl(k, v) {
+      var cls = isAffirm(v) ? ' class="excl-yes"' : '';
+      return '<dt>' + esc(k) + '</dt><dd' + cls + '>' + esc2(v) + '</dd>';
+    }
+    return '<div class="detail-section"><h3>Butiran Rujukan</h3><dl class="detail-grid">' +
+      row('Nama pesakit', c.patientName) +
+      row('No. KP / ID', c.icNo) +
+      row('Wad', c.ward) +
+      row('Katil', c.bed) +
+      row('RN', c.rn) +
+      row('Masa kematian', fmtDateTime(c.timeOfDeath)) +
+      row('Masa dirujuk', fmtDateTime(c.createdAt)) +
+      exl('Penyakit boleh dijangkiti', c.exclTransmissible) +
+      exl('Malignansi (barah)', c.exclMalignancy) +
+      exl('Sepsis', c.exclSepsis) +
+      exl('Penyakit sistemik tidak terkawal', c.exclSystemic) +
+      row('Kad pledger', c.pledgerCard) +
+      row('Keluarga ditanya', c.familyApproached) +
+      row('Kes medikolegal', c.medicoLegalRaw) +
+      row('Staf merujuk', c.staffName) +
+      row('Hubungan', c.contactExt) +
+      row('Nota', c.notes) +
+      '</dl></div>';
+  }
+
+  function isAffirm(v) {
+    var s = String(v || '').trim().toLowerCase();
+    return s === 'ya' || s === 'yes' || s === 'y' || s === 'sudah';
+  }
+
+  detailClose.addEventListener('click', closeDetail);
+  detailOverlay.addEventListener('click', function (e) {
+    if (e.target === detailOverlay) { closeDetail(); return; } // backdrop
     var btn = e.target && e.target.closest ? e.target.closest('.btn-respond') : null;
-    if (!btn) return;
-    var id = btn.getAttribute('data-id');
-    if (!id) return;
-    if (!token) { forceLogout('Sila log masuk semula.'); return; }
-    openResp(id);
+    if (btn) {
+      var id = btn.getAttribute('data-id');
+      if (!id) return;
+      if (!token) { closeDetail(); forceLogout('Sila log masuk semula.'); return; }
+      closeDetail();
+      openResp(id); // hand off to the decision-tree modal
+    }
   });
 
   // =========================================================================
@@ -605,7 +778,10 @@
     if (e.target === respOverlay) closeResp(); // click the backdrop
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && !respOverlay.classList.contains('ck-hidden')) closeResp();
+    if (e.key !== 'Escape') return;
+    // Close the topmost open overlay: the response form sits above the detail.
+    if (!respOverlay.classList.contains('ck-hidden')) closeResp();
+    else if (!detailOverlay.classList.contains('ck-hidden')) closeDetail();
   });
 
   // =========================================================================
@@ -642,6 +818,15 @@
   function fmtClock(d) {
     function p(n) { return n < 10 ? '0' + n : '' + n; }
     return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+  // ISO string -> "YYYY-MM-DD HH:mm" in the viewer's local time (KL for the team).
+  function fmtDateTime(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    function p(n) { return n < 10 ? '0' + n : '' + n; }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+      ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
   function esc(s) {
     return String(s == null ? '' : s)
