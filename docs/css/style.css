@@ -267,6 +267,27 @@ a { color: var(--green-dark); }
   .masthead-org { font-size: .7rem; line-height: 1.3; }
 }
 
+/* ---- Merged co-branding row (index): TOP Touch logo + brand, then org name,
+   with the hospital logo pushed to the far right. Nav moves to its own row. ---- */
+.masthead--merged .masthead-top { flex-wrap: wrap; }
+.masthead--merged .masthead-org {
+  padding-left: 14px; margin-left: 4px;
+  border-left: 1px solid rgba(255,255,255,.22);
+}
+.masthead--merged .masthead-logos {
+  margin-left: auto;               /* push hospital logo to the far right */
+  padding-right: 0; border-right: none;
+}
+.masthead--merged .masthead-navrow { padding-top: 4px; }
+.masthead--merged .masthead-navrow .site-nav { margin-left: 0; } /* left-align nav in its own row */
+@media (max-width: 639.98px) {
+  /* Keep the brand + hamburger on the top row; the long org name would overflow
+     next to both logos on a phone, so hide it there (still on the ticker/footer). */
+  .masthead--merged .masthead-top { flex-wrap: nowrap; }
+  .masthead--merged .masthead-org { display: none; }
+  .masthead--merged .masthead-logos { margin-right: 6px; }
+}
+
 .btn-with-logo { gap: 10px; }
 .btn-logo {
   width: 28px; height: 28px; flex: 0 0 auto;
