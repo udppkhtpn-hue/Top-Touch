@@ -41,7 +41,7 @@
   var EXCEPTIONS = [
     { key: 'unackEscalated',  label: 'Belum diakui — melepasi masa eskalasi', sev: 'hot' },
     { key: 'exclAny',         label: 'Kriteria pengecualian = Ya — menunggu semakan TOP', sev: 'warn' },
-    { key: 'medicoLegal',     label: 'Kes perundangan (medico-legal) belum dilepaskan',   sev: 'warn' }
+    { key: 'medicoLegal',     label: 'Kes medikolegal — perlu pelepasan perundangan', sev: 'warn' }
   ];
 
 
