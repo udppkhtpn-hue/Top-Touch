@@ -276,7 +276,16 @@ function getLiveCases(token) {
       },
       status: status,
       closed: closed,
-      outcome: String(r[idx.outcome] || ''), // consent decision: 'Setuju' / 'Tidak bersetuju'
+      // Family-approach decision tree (filled by the admin Respon form) — surfaced
+      // in the detail pop-out for closed cases.
+      outcome: String(r[idx.outcome] || ''),                       // 'Setuju' / 'Tidak bersetuju'
+      familyDiscussed: String(r[idx.familyDiscussed] || ''),       // 'Ya' / 'Tidak'
+      notDiscussedReason: String(r[idx.notDiscussedReason] || ''), // when not discussed
+      refusalReason: String(r[idx.refusalReason] || ''),           // when 'Tidak bersetuju'
+      tissueCornea: String(r[idx.tissueCornea] || ''),
+      tissueValve: String(r[idx.tissueValve] || ''),
+      tissueBone: String(r[idx.tissueBone] || ''),
+      tissueSkin: String(r[idx.tissueSkin] || ''),
       acknowledgedBy: String(r[idx.acknowledgedBy] || ''),
       owner: String(r[idx.acknowledgedBy] || '')
     };

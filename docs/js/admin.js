@@ -641,7 +641,7 @@
     var c = casesById[id];
     if (!c) return;
     detailTitle.textContent = 'Kes ' + id;
-    detailBody.innerHTML = caseCard(c) + detailInfoHtml(c);
+    detailBody.innerHTML = caseCard(c) + responseInfoHtml(c) + detailInfoHtml(c);
     detailOverlay.classList.remove('ck-hidden');
     refreshAll(); // fill the card's countdowns immediately
   }
@@ -681,6 +681,38 @@
   function isAffirm(v) {
     var s = String(v || '').trim().toLowerCase();
     return s === 'ya' || s === 'yes' || s === 'y' || s === 'sudah';
+  }
+
+  // Decision-tree outcome for a CLOSED case (from the Respon form): the reason it
+  // was not discussed, the consented tissues, or the refusal reason.
+  function responseInfoHtml(c) {
+    if (!isClosed(c)) return '';
+    function row(k, v) { return '<dt>' + esc(k) + '</dt><dd>' + esc(v || '—') + '</dd>'; }
+    var fd = String(c.familyDiscussed || '').trim();
+    var oc = String(c.outcome || '').trim();
+    var rows = '';
+    if (fd) rows += row('Dibincangkan dengan waris', fd);
+
+    if (fd === 'Tidak') {
+      rows += row('Sebab tidak dibincangkan', c.notDiscussedReason);
+    } else {
+      if (oc) rows += row('Keputusan waris', oc);
+      if (/setuju/i.test(oc)) {
+        if (/tidak/i.test(oc)) {           // "Tidak bersetuju"
+          rows += row('Sebab tidak bersetuju', c.refusalReason);
+        } else {                            // "Setuju" — which tissues
+          var t = [];
+          if (isAffirm(c.tissueCornea)) t.push('Kornea mata');
+          if (isAffirm(c.tissueBone)) t.push('Tulang');
+          if (isAffirm(c.tissueSkin)) t.push('Kulit');
+          if (isAffirm(c.tissueValve)) t.push('Injap jantung');
+          rows += row('Tisu didermakan', t.length ? t.join(', ') : '—');
+        }
+      }
+    }
+    if (!rows) return '';
+    return '<div class="detail-section"><h3>Keputusan Pasukan TOP</h3>' +
+      '<dl class="detail-grid">' + rows + '</dl></div>';
   }
 
   detailClose.addEventListener('click', closeDetail);
