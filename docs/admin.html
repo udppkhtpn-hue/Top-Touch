@@ -114,6 +114,8 @@
       border: 1px solid transparent; }
     .badge-hot { background: #fdecea; color: #7a1c12; border-color: #f5c6c0; }
     .badge-warn { background: #fff6e6; color: #7a4a00; border-color: #f0d9ac; }
+    .badge-muted { background: var(--surface); color: var(--muted); border-color: var(--line); }
+    .badge-done { background: var(--green-light); color: var(--green-darker); border-color: transparent; }
 
     /* Patient identity strip (built only from patientName + icNo) */
     .case-idbits { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 4px 0 2px;
@@ -327,17 +329,21 @@
           <!-- Exceptions strip (C3) -->
           <div class="exc-strip" id="excStrip" aria-live="polite"></div>
 
-          <!-- Active cases — urgency countdowns -->
+          <!-- Recent cases — all statuses, newest first (capped at 10) -->
           <div class="ck-toolbar">
             <span class="ck-view-label">Senarai Kes</span>
             <div class="ck-filters">
               <input type="search" id="fltSearch" placeholder="Cari wad / ID / pesakit…" autocomplete="off" aria-label="Cari kes">
               <select id="fltWard" aria-label="Tapis mengikut wad"><option value="">Semua wad</option></select>
-              <select id="fltSort" aria-label="Susun kes">
-                <option value="urgency">Susun: Keutamaan</option>
-                <option value="latest">Susun: Terkini</option>
+              <select id="fltStatus" aria-label="Tapis mengikut status">
+                <option value="">Semua status</option>
+                <option value="NEW">Baharu</option>
+                <option value="CLOSED">Direspons</option>
               </select>
-              <label class="ck-check"><input type="checkbox" id="fltExc"> Pengecualian sahaja</label>
+              <select id="fltSort" aria-label="Susun kes">
+                <option value="latest">Susun: Terkini</option>
+                <option value="urgency">Susun: Keutamaan</option>
+              </select>
             </div>
             <span class="ck-count" id="ckCount"></span>
           </div>

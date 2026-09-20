@@ -220,7 +220,10 @@ function getLiveCases(token) {
   for (var i = 1; i < values.length; i++) {
     var r = values[i];
     var status = String(r[idx.status] || '');
-    if (CLOSED_STATUSES[status]) continue; // open cases only
+    // Return BOTH open and closed cases; the cockpit now shows all recent cases
+    // (newest first, capped client-side) with a status filter. `closed` lets the
+    // frontend badge/sort them without re-deriving the closed-status set.
+    var closed = !!CLOSED_STATUSES[status];
 
     var tod = asDate_(r[idx.timeOfDeath]);
     var elapsedMin = tod ? minutesBetween_(now, tod) : null;
@@ -272,17 +275,19 @@ function getLiveCases(token) {
           minutesBetween_(now, createdAt) > escalationMinutes
       },
       status: status,
+      closed: closed,
       acknowledgedBy: String(r[idx.acknowledgedBy] || ''),
       owner: String(r[idx.acknowledgedBy] || '')
     };
     cases.push(caseObj);
   }
 
-  // Most-urgent-first: the soonest-closing unresolved window leads.
+  // Most-urgent-first: the soonest-closing unresolved window leads. (The cockpit
+  // re-sorts client-side — newest-first by default — so this is just a stable base.)
   cases.sort(function (a, b) { return urgencyKey_(a) - urgencyKey_(b); });
 
   // Audit one identifier-light row per view (DASHBOARD_PLAN §2).
-  appendAudit_(user.username || 'admin', 'VIEW_LIVE_CASES', '', 'openCases=' + cases.length);
+  appendAudit_(user.username || 'admin', 'VIEW_LIVE_CASES', '', 'cases=' + cases.length);
 
   return { ok: true, data: { cases: cases, oncall: readOncall_(), serverTime: toIso_(now) } };
 }

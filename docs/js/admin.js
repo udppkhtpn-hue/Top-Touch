@@ -108,8 +108,9 @@
   var caseTbody = document.getElementById('caseTbody');
   var fltSearch = document.getElementById('fltSearch');
   var fltWard = document.getElementById('fltWard');
+  var fltStatus = document.getElementById('fltStatus');
   var fltSort = document.getElementById('fltSort');
-  var fltExc = document.getElementById('fltExc');
+  var MAX_ROWS = 10;                       // cap the list to the 10 most recent
   // Case detail pop-out
   var detailOverlay = document.getElementById('detailOverlay');
   var detailTitle = document.getElementById('detailTitle');
@@ -268,11 +269,11 @@
   function render() {
     if (!lastData) return;
     var cases = lastData.cases || [];
-    ckCount.textContent = cases.length + (cases.length === 1 ? ' kes aktif' : ' kes aktif');
 
     renderOncall(lastData.oncall || []);
-    renderExceptions(cases);
-    renderTable();
+    // Exceptions strip summarises OPEN cases needing attention only.
+    renderExceptions(cases.filter(function (c) { return !isClosed(c); }));
+    renderTable(); // sets the case count itself (respects filters + the 10-row cap)
     refreshAll(); // populate countdowns immediately (no blank first second)
   }
 
@@ -307,15 +308,18 @@
   }
 
   // ---- Filterable case table ----
-  function hasAnyFlag(c) {
-    var f = c.flags || {};
-    return !!(f.unackEscalated || f.serologyOverdue || f.exclAny || f.medicoLegal);
-  }
   function firstName(name) {
     var s = String(name || '').trim();
     return s ? s.split(/\s+/)[0] : '';
   }
   function dateMs(iso) { var t = Date.parse(iso || ''); return isNaN(t) ? 0 : t; }
+  // Closed statuses (mirror Dashboard.gs CLOSED_STATUSES). Prefer the server's
+  // `closed` flag when present; fall back to the status string.
+  var CLOSED_SET = { RESPONDED: 1, PROCURED: 1, NOT_PROCEEDED: 1, ESCALATION_EXHAUSTED: 1, SELESAI: 1 };
+  function isClosed(c) {
+    if (c && typeof c.closed === 'boolean') return c.closed;
+    return !!CLOSED_SET[String(c && c.status || '').toUpperCase()];
+  }
 
   // Flag badge spans (shared by the table cell and the detail card).
   function flagBadges(f) {
@@ -328,14 +332,19 @@
     }).join('');
   }
 
-  // Status column cell: an unacknowledged case shows a blinking green Respon
-  // button (the app's single status write); plus any flag badges. There is no
-  // serology-result tracking, so no serology signal is shown.
+  // Status column cell:
+  //  - Closed case  -> a "Direspons" status badge.
+  //  - Open case    -> a green Respon button (blinks when unacknowledged/overdue).
+  //  - Plus any flag badges (Ada pengecualian / Medico-legal).
+  // There is no serology-result tracking, so no serology signal is shown.
   function statusCell(c) {
     var f = c.flags || {};
     var html = '';
-    if (f.unackEscalated) {
-      html += '<button type="button" class="btn-respond btn-respond--blink" data-id="' +
+    if (isClosed(c)) {
+      html += '<span class="badge badge-done">Direspons</span>';
+    } else {
+      var blink = f.unackEscalated ? ' btn-respond--blink' : '';
+      html += '<button type="button" class="btn-respond' + blink + '" data-id="' +
         esc(c.id || '') + '">Respon</button>';
     }
     html += flagBadges(f);
@@ -377,12 +386,13 @@
 
     var q = (fltSearch.value || '').trim().toLowerCase();
     var wardF = fltWard.value || '';
-    var excOnly = !!fltExc.checked;
+    var statusF = fltStatus ? fltStatus.value : ''; // '' | 'NEW' | 'CLOSED'
     var effNow = Date.now() + clockOffset;
 
     var rows = cases.filter(function (c) {
       if (wardF && c.ward !== wardF) return false;
-      if (excOnly && !hasAnyFlag(c)) return false;
+      if (statusF === 'NEW' && isClosed(c)) return false;
+      if (statusF === 'CLOSED' && !isClosed(c)) return false;
       if (q) {
         var hay = (c.ward + ' ' + c.bed + ' ' + c.id + ' ' + firstName(c.patientName)).toLowerCase();
         if (hay.indexOf(q) < 0) return false;
@@ -390,21 +400,29 @@
       return true;
     });
 
-    // Sort: 'latest' = newest referral first (by createdAt); default = urgency
-    // (soonest-closing window first).
-    var sortMode = fltSort ? fltSort.value : 'urgency';
-    if (sortMode === 'latest') {
-      rows.sort(function (a, b) { return dateMs(b.createdAt) - dateMs(a.createdAt); });
-    } else {
+    // Sort: 'urgency' = soonest-closing window first; default 'latest' = newest
+    // referral first (by createdAt) — the default view shows the newest at top.
+    var sortMode = fltSort ? fltSort.value : 'latest';
+    if (sortMode === 'urgency') {
       rows.sort(function (a, b) { return urgency(a, effNow) - urgency(b, effNow); });
+    } else {
+      rows.sort(function (a, b) { return dateMs(b.createdAt) - dateMs(a.createdAt); });
     }
+
+    var total = rows.length;
+    rows = rows.slice(0, MAX_ROWS); // cap the list at the 10 most recent
+
+    // Count label: shown (of total when capped/filtered).
+    ckCount.textContent = total > rows.length
+      ? (rows.length + ' drpd ' + total + ' kes')
+      : (total + (total === 1 ? ' kes' : ' kes'));
 
     if (!rows.length) {
       caseTbody.innerHTML = '';
       emptyUrgency.classList.remove('ck-hidden');
       emptyUrgency.textContent = cases.length
         ? 'Tiada kes sepadan dengan tapisan.'
-        : 'Tiada kes aktif buat masa ini.';
+        : 'Tiada kes buat masa ini.';
       return;
     }
     emptyUrgency.classList.add('ck-hidden');
@@ -502,6 +520,12 @@
     if (!c) return;
     var eCell = tr.querySelector('.ct-elapsed');
     var uCell = tr.querySelector('.ct-urgency');
+    // Closed cases: the clinical windows no longer apply — show a dash.
+    if (isClosed(c)) {
+      if (eCell) eCell.textContent = '—';
+      if (uCell) { uCell.textContent = '—'; uCell.className = 'ct-urgency'; }
+      return;
+    }
     var tod = Date.parse(c.timeOfDeath || '');
     if (isNaN(tod)) {
       if (eCell) eCell.textContent = '—';
@@ -581,8 +605,8 @@
   // =========================================================================
   if (fltSearch) fltSearch.addEventListener('input', renderTable);
   if (fltWard) fltWard.addEventListener('change', renderTable);
+  if (fltStatus) fltStatus.addEventListener('change', renderTable);
   if (fltSort) fltSort.addEventListener('change', renderTable);
-  if (fltExc) fltExc.addEventListener('change', renderTable);
 
   // =========================================================================
   // Case detail pop-out — full Rujuk Kes detail + live windows + Respon.
