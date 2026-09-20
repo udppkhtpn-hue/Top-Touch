@@ -117,6 +117,11 @@
   var detailBody = document.getElementById('detailBody');
   var detailClose = document.getElementById('detailClose');
   var casesById = {};        // id -> case object, rebuilt each render (for tick + detail)
+  // First-load progress overlay
+  var ckLoader = document.getElementById('ckLoader');
+  var ckLoaderBar = document.getElementById('ckLoaderBar');
+  var ckLoaderPct = document.getElementById('ckLoaderPct');
+  var loaderTimer = null, loaderActive = false;
 
   // =========================================================================
   // Login
@@ -156,12 +161,40 @@
   function setGateErr(msg) { gateErr.textContent = msg || ''; }
 
   // =========================================================================
+  // First-load progress overlay — shown once, while the first getLiveCases
+  // resolves (its cold start can take several seconds). The % is an eased fake
+  // that creeps toward 90% and snaps to 100% when the data lands.
+  // =========================================================================
+  function setLoaderPct(v) { if (ckLoaderBar) ckLoaderBar.style.width = v + '%'; if (ckLoaderPct) ckLoaderPct.textContent = Math.round(v) + '%'; }
+  function showLoader() {
+    if (!ckLoader) return;
+    loaderActive = true;
+    var pct = 0;
+    setLoaderPct(0);
+    ckLoader.classList.remove('hidden');
+    if (loaderTimer) clearInterval(loaderTimer);
+    loaderTimer = setInterval(function () {
+      pct += Math.max(0.6, (92 - pct) * 0.06); // ease toward ~92%
+      if (pct > 92) pct = 92;
+      setLoaderPct(pct);
+    }, 130);
+  }
+  function hideLoader() {
+    if (!loaderActive) return;
+    loaderActive = false;
+    if (loaderTimer) { clearInterval(loaderTimer); loaderTimer = null; }
+    setLoaderPct(100);
+    setTimeout(function () { if (ckLoader) ckLoader.classList.add('hidden'); }, 300);
+  }
+
+  // =========================================================================
   // Session lifecycle
   // =========================================================================
   function startSession(name) {
     gate.classList.add('ck-hidden');
     cockpit.classList.remove('ck-hidden');
     ckUser.textContent = name ? ('👤 ' + name) : '';
+    showLoader();  // covers the cockpit until the first poll renders
     poll();
     if (pollTimer) clearInterval(pollTimer);
     if (tickTimer) clearInterval(tickTimer);
@@ -260,7 +293,7 @@
       .catch(function () {
         liveTxt.textContent = 'Ralat sambungan';
       })
-      .then(function () { liveInd.classList.remove('polling'); });
+      .then(function () { liveInd.classList.remove('polling'); hideLoader(); });
   }
 
   // =========================================================================
@@ -377,7 +410,7 @@
       '<td>' + patientBits(c) + '</td>' +
       '<td class="ct-elapsed">—</td>' +
       '<td class="ct-urgency">—</td>' +
-      '<td class="ct-flags ct-hide-sm">' + statusCell(c) + '</td>' +
+      '<td class="ct-flags">' + statusCell(c) + '</td>' +
       '</tr>';
   }
 

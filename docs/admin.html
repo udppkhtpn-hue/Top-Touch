@@ -15,6 +15,21 @@
     /* ---- Pusat Operasi — page-scoped styles (kept out of the shared critical CSS) ---- */
     .ck-wrap { max-width: var(--maxw-wide); }
 
+    /* ---- First-load progress overlay (mirrors the landing preloader) ---- */
+    #ckLoader { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px; background: var(--green); color: #fff;
+      transition: opacity .5s ease, visibility .5s ease; }
+    #ckLoader.hidden { opacity: 0; visibility: hidden; }
+    #ckLoader .pl-logo { width: 92px; height: 92px; object-fit: contain; background: #fff;
+      border-radius: 20px; padding: 12px; box-shadow: var(--shadow); }
+    #ckLoader .pl-brand { font-size: 1.6rem; font-weight: 800; letter-spacing: .3px; }
+    #ckLoader .pl-sub { font-size: .9rem; opacity: .85; margin-top: -8px; }
+    #ckLoader .pl-pct { font-size: 2.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    #ckLoader .pl-track { width: min(240px, 70vw); height: 6px; border-radius: 999px;
+      background: rgba(255,255,255,.25); overflow: hidden; }
+    #ckLoader .pl-bar { height: 100%; width: 0%; background: #fff; border-radius: 999px; transition: width .2s ease; }
+    @media (prefers-reduced-motion: reduce) { #ckLoader .pl-bar { transition: none; } }
+
     /* ---- Login gate ---- */
     .gate { max-width: 420px; margin: 40px auto; background: var(--white);
       border: 1px solid var(--line); border-radius: var(--radius);
@@ -263,6 +278,16 @@
 </head>
 <body>
 
+  <!-- First-load progress overlay (shown after login while getLiveCases loads;
+       the first cold start can take a few seconds). Mirrors the landing preloader. -->
+  <div id="ckLoader" class="hidden" aria-hidden="true">
+    <img class="pl-logo" src="img/logo.png" alt="" width="96" height="80">
+    <div class="pl-brand">T.O.P. Touch</div>
+    <div class="pl-sub">Memuatkan kes…</div>
+    <div class="pl-pct" id="ckLoaderPct">0%</div>
+    <div class="pl-track"><div class="pl-bar" id="ckLoaderBar"></div></div>
+  </div>
+
   <header class="masthead">
     <div class="container">
       <a class="brand-link" href="index.html" aria-label="T.O.P. Touch — Laman Utama">
@@ -358,7 +383,7 @@
                     <th>Pesakit</th>
                     <th>Berlalu</th>
                     <th>Keutamaan</th>
-                    <th class="ct-hide-sm">Status</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody id="caseTbody"></tbody>
