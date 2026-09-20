@@ -341,7 +341,13 @@
     var f = c.flags || {};
     var html = '';
     if (isClosed(c)) {
-      html += '<span class="badge badge-done">Direspons</span>';
+      html += '<span class="badge badge-muted">Tutup</span>';
+      // Consent decision recorded by the TOP team (outcome column), if any.
+      var oc = String(c.outcome || '').trim();
+      if (/setuju/i.test(oc)) {
+        var declined = /tidak/i.test(oc); // "Tidak bersetuju"
+        html += '<span class="badge ' + (declined ? 'badge-hot' : 'badge-done') + '">' + esc(oc) + '</span>';
+      }
     } else {
       var blink = f.unackEscalated ? ' btn-respond--blink' : '';
       html += '<button type="button" class="btn-respond' + blink + '" data-id="' +

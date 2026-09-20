@@ -276,6 +276,7 @@ function getLiveCases(token) {
       },
       status: status,
       closed: closed,
+      outcome: String(r[idx.outcome] || ''), // consent decision: 'Setuju' / 'Tidak bersetuju'
       acknowledgedBy: String(r[idx.acknowledgedBy] || ''),
       owner: String(r[idx.acknowledgedBy] || '')
     };
